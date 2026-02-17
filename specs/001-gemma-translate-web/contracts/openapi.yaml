@@ -61,12 +61,15 @@ paths:
                   target_lang: null
                   stream: true
               manual:
-                summary: 手動指定語言
+                summary: 手動指定語言與術語對照表
                 value:
                   text: "你好，世界！"
                   source_lang: "zh-TW"
                   target_lang: "en"
                   stream: false
+                  glossary:
+                    - source: "世界"
+                      target: "World"
       responses:
         '200':
           description: 翻譯成功
@@ -183,12 +186,6 @@ paths:
                   - code: "zh-TW"
                     name: "Traditional Chinese"
                     native_name: "繁體中文"
-                  - code: "ja"
-                    name: "Japanese"
-                    native_name: "日本語"
-                  - code: "ko"
-                    name: "Korean"
-                    native_name: "한국어"
         '500':
           description: 伺服器內部錯誤
           content:
@@ -280,6 +277,24 @@ components:
           type: boolean
           default: true
           description: 是否使用 SSE 串流輸出
+        glossary:
+          type: array
+          nullable: true
+          description: 自訂術語對照表,翻譯時優先使用表中定義的對應
+          items:
+            type: object
+            required:
+              - source
+              - target
+            properties:
+              source:
+                type: string
+                description: 原文詞彙
+                example: "API"
+              target:
+                type: string
+                description: 對應譯文
+                example: "API"
 
     TranslationResponse:
       type: object

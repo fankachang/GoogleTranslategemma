@@ -24,6 +24,8 @@
 **Testing**: 
 - 後端: pytest, pytest-asyncio
 - 前端: bUnit, xUnit
+- **測試策略**: TDD(測試驅動開發) - 先寫測試再實作功能，包含單元測試與整合測試
+- **效能測試**: 初期忽略，先確保功能完整性
 
 **Target Platform**: 
 - 後端: Linux / macOS / Windows 伺服器，支援 Apple MPS、NVIDIA CUDA、CPU 推論
@@ -44,10 +46,11 @@
 - 簡單為主：無帳號管理、無資料庫
 
 **Scale/Scope**: 
-- 單機部署、無並發限制設計（依硬體資源決定）
-- 支援 15+ 種常用語言，**主要語言對為繁體中文（zh-TW）<-> 英文（en）**，不支援簡體中文
-- 初期自動語言偵測僅支援繁體中文與英文
-- 支援多瀏覽器分頁/視窗獨立翻譯記錄
+- 單機部署、多人多電腦使用(預設 50 人以下)、無並發限制設計(依硬體資源決定)
+- **僅支援繁體中文(zh-TW) <-> 英文(en)**，不支援簡體中文或其他語言
+- 自動語言偵測僅支援繁體中文與英文
+- 支援多瀏覽器分頁/視窗獨立翻譯記錄，屬於預設行為無需特殊處理
+- 支援自訂術語對照表，允許使用者指定特定原文與譯文對應
 
 ## Constitution Check
 
@@ -175,12 +178,13 @@ README.md                    # 專案說明與快速開始```
   - 未來功能: 批次翻譯、TTS、詞彙庫
 
 ### Phase 1: Data Model & Contracts
-- ✅ **[data-model.md](./data-model.md)**: 5 個核心實體定義，含 Pydantic/C# schema
-  - **TranslationRequest**: text (1-5000 字元), source_lang, target_lang, stream
+- ✅ **[data-model.md](./data-model.md)**: 6 個核心實體定義，含 Pydantic/C# schema
+  - **TranslationRequest**: text (1-5000 字元), source_lang, target_lang, stream, glossary(術語對照表)
   - **TranslationResponse**: translation, source_lang, target_lang, detected 旗標
-  - **Language**: code (ISO 639-1), name, native_name（支援 15+ 語言，主要為繁體中文與英文）
+  - **Language**: code (ISO 639-1), name, native_name（僅支援 zh-TW 和 en）
   - **TranslationHistory**: 前端記憶體內歷史記錄（UUID, 來源/譯文, 時間戳記, 偵測旗標）
   - **HealthCheckResponse**: status (ok/degraded/error), model, device, model_loaded
+  - **TerminologyGlossary**: 自訂術語對照表（source_text, target_text, source_lang, target_lang, case_sensitive）
   - 驗證規則: 前端即時驗證 + 後端 FastAPI Pydantic 驗證
   - 狀態轉換: Created → Validating → Sending → Streaming → Completed
   - 錯誤模型: 6 種常見錯誤類型（validation_error, timeout, model_not_loaded 等）

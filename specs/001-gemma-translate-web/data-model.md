@@ -21,9 +21,10 @@
 | 欄位 | 類型 | 必填 | 說明 | 驗證規則 |
 |------|------|------|------|----------|
 | `text` | `string` | ✅ | 待翻譯文字 | 1-5000 字元 |
-| `source_lang` | `string` | ❌ | 來源語言碼（如 `en`, `zh`） | ISO 639-1 格式，若為 `null` 則自動偵測 |
-| `target_lang` | `string` | ❌ | 目標語言碼（如 `zh-TW`, `en`） | ISO 639-1 格式，若為 `null` 則根據 `source_lang` 智能切換 |
+| `source_lang` | `string` | ❌ | 來源語言碼(如 `en`, `zh-TW`) | ISO 639-1 格式,若為 `null` 則自動偵測 |
+| `target_lang` | `string` | ❌ | 目標語言碼(如 `zh-TW`, `en`) | ISO 639-1 格式,若為 `null` 則根據 `source_lang` 智能切換 |
 | `stream` | `boolean` | ❌ | 是否使用串流輸出 | 預設 `true` |
+| `glossary` | `array` | ❌ | 自訂術語對照表 | 可選,格式為 `[{"source": "...", "target": "..."}]` |
 
 **Example (JSON)**:
 ```json
@@ -31,7 +32,11 @@
   "text": "Hello, world!",
   "source_lang": null,
   "target_lang": null,
-  "stream": true
+  "stream": true,
+  "glossary": [
+    {"source": "API", "target": "API"},
+    {"source": "machine learning", "target": "機器學習"}
+  ]
 }
 ```
 
@@ -39,11 +44,16 @@
 ```python
 from pydantic import BaseModel, Field, field_validator
 
+class GlossaryEntry(BaseModel):
+    source: str = Field(..., description="原文詞彙")
+    target: str = Field(..., description="對應譯文")
+
 class TranslationRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=5000, description="待翻譯文字")
-    source_lang: str | None = Field(None, description="來源語言碼，null 表示自動偵測")
-    target_lang: str | None = Field(None, description="目標語言碼，null 表示智能切換")
+    source_lang: str | None = Field(None, description="來源語言碼,null 表示自動偵測")
+    target_lang: str | None = Field(None, description="目標語言碼,null 表示智能切換")
     stream: bool = Field(True, description="是否使用串流輸出")
+    glossary: list[GlossaryEntry] | None = Field(None, description="自訂術語對照表")
     
     @field_validator('text')
     def validate_text_not_empty(cls, v):
@@ -54,6 +64,12 @@ class TranslationRequest(BaseModel):
 
 **Frontend Model (C#)**:
 ```csharp
+public class GlossaryEntry
+{
+    public string Source { get; set; } = string.Empty;
+    public string Target { get; set; } = string.Empty;
+}
+
 public class TranslationRequest
 {
     [Required]
@@ -64,6 +80,8 @@ public class TranslationRequest
     public string? TargetLang { get; set; }
     
     public bool Stream { get; set; } = true;
+    
+    public List<GlossaryEntry>? Glossary { get; set; }
 }
 ```
 
@@ -162,24 +180,11 @@ public class Language
 }
 ```
 
-**Supported Languages** (初期 15+ 種，主要為繁體中文與英文):
+**Supported Languages** (僅支援繁體中文與英文):
 ```json
 [
   {"code": "en", "name": "English", "native_name": "English"},
-  {"code": "zh-TW", "name": "Traditional Chinese", "native_name": "繁體中文"},
-  {"code": "ja", "name": "Japanese", "native_name": "日本語"},
-  {"code": "ko", "name": "Korean", "native_name": "한국어"},
-  {"code": "fr", "name": "French", "native_name": "Français"},
-  {"code": "de", "name": "German", "native_name": "Deutsch"},
-  {"code": "es", "name": "Spanish", "native_name": "Español"},
-  {"code": "pt", "name": "Portuguese", "native_name": "Português"},
-  {"code": "ru", "name": "Russian", "native_name": "Русский"},
-  {"code": "it", "name": "Italian", "native_name": "Italiano"},
-  {"code": "ar", "name": "Arabic", "native_name": "العربية"},
-  {"code": "hi", "name": "Hindi", "native_name": "हिन्दी"},
-  {"code": "th", "name": "Thai", "native_name": "ไทย"},
-  {"code": "vi", "name": "Vietnamese", "native_name": "Tiếng Việt"},
-  {"code": "id", "name": "Indonesian", "native_name": "Bahasa Indonesia"}
+  {"code": "zh-TW", "name": "Traditional Chinese", "native_name": "繁體中文"}
 ]
 ```
 
@@ -267,6 +272,44 @@ class HealthCheckResponse(BaseModel):
     model_loaded: bool
     uptime_seconds: int | None = None
 ```
+
+---
+
+### 6. Terminology Glossary(術語對照表)
+
+代表使用者自訂的詞彙翻譯對應,**僅存在於瀏覽器記憶體中**。
+
+**Attributes**:
+
+| 欄位 | 類型 | 必填 | 說明 |
+|------|------|------|------|
+| `id` | `string` | ✅ | 唯一識別碼(前端生成 UUID) |
+| `source_text` | `string` | ✅ | 原文詞彙 |
+| `target_text` | `string` | ✅ | 對應譯文 |
+| `source_lang` | `string` | ✅ | 來源語言碼 |
+| `target_lang` | `string` | ✅ | 目標語言碼 |
+| `case_sensitive` | `boolean` | ✅ | 是否區分大小寫(預設 `false`) |
+| `created_at` | `DateTime` | ✅ | 建立時間 |
+
+**Frontend Model (C# - Blazor State)**:
+```csharp
+public class TerminologyGlossary
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string SourceText { get; set; } = string.Empty;
+    public string TargetText { get; set; } = string.Empty;
+    public string SourceLang { get; set; } = "en";
+    public string TargetLang { get; set; } = "zh-TW";
+    public bool CaseSensitive { get; set; } = false;
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+}
+```
+
+**Usage**:
+- 使用者在前端界面增加/編輯/刪除術語對照項目
+- 翻譯時,將有效的術語對照表作為 `glossary` 參數傳送給後端
+- 後端在翻譯前先替換原文中的術語(或在 prompt 中指定)
+- 頁面重新整理或關閉時自動清除
 
 ---
 
@@ -379,7 +422,7 @@ class HealthCheckResponse(BaseModel):
    - 若 `target_lang` 為 `null`：
      - `source_lang == "zh-TW"` → `target_lang = "en"`（繁體中文 → 英文）
      - `source_lang == "en"` → `target_lang = "zh-TW"`（英文 → 繁體中文）
-     - 其他語言 → 回傳錯誤
+     - 其他語言 → 回傳錯誤(本系統僅支援 zh-TW ⇔ en)
 
 3. **相同語言對檢查**:
    - `source_lang == target_lang` → Toast 提示「來源與目標語言相同」

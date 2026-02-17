@@ -57,7 +57,7 @@
 - [ ] T010 實作 backend/src/model.py：實作 TranslateGemmaModel 類別，載入 Transformers 模型，支援 CUDA/MPS/CPU 裝置選擇
 - [ ] T011 實作 backend/src/language_detect.py：實作 detect_language() 函式，使用正則表達式偵測繁體中文與英文
 - [ ] T012 [P] 實作 backend/src/schemas/translation.py：定義 TranslationRequest, TranslationResponse Pydantic 模型
-- [ ] T013 [P] 實作 backend/src/schemas/language.py：定義 Language Pydantic 模型與 15+ 種語言常數清單
+- [ ] T013 [P] 實作 backend/src/schemas/language.py：定義 Language Pydantic 模型與語言常數清單（僅 zh-TW, en 兩種語言）
 - [ ] T014 實作 backend/src/main.py：建立 FastAPI app，配置 CORS，註冊路由，啟動時載入模型
 - [ ] T015 實作 backend/src/routes/health.py：GET /health 端點，回傳服務狀態、模型名稱、裝置、載入狀態
 - [ ] T016 [P] 實作 backend/tests/unit/test_config.py：測試配置檔案載入與驗證邏輯
@@ -80,6 +80,7 @@
 3. 點擊翻譯按鈕
 4. 驗證頁面顯示「你好，世界！」（或類似譯文）
 5. 驗證後端日誌顯示模型推論成功
+6. 測試特殊字符（emoji、換行符號、符號）正確處理
 
 **Tasks**:
 
@@ -95,7 +96,7 @@
 - [ ] T030 [US1] 實作 frontend/Pages/Index.razor：整合 TranslationInput 元件，顯示翻譯結果文字（暫時簡單顯示，不使用對話泡泡）
 - [ ] T031 [US1] 在 Program.cs 註冊 TranslationService 為 Scoped 服務
 - [ ] T032 [US1] 在 Index.razor 實作載入狀態顯示（翻譯中...提示）
-- [ ] T033 [US1] 實作 backend/tests/integration/test_api_endpoints.py：測試 POST /api/translate 端點（成功案例、空白輸入、超長文字）
+- [ ] T033 [US1] 實作 backend/tests/integration/test_api_endpoints.py：測試 POST /api/translate 端點（成功案例、空白輸入、超長文字、特殊字符如 emoji/換行/符號）
 
 ---
 
@@ -116,7 +117,7 @@
 
 **Tasks**:
 
-- [ ] T034 [US2] 實作 backend/src/routes/languages.py：GET /api/languages 端點，回傳 15+ 種語言清單（含 code, name, native_name）
+- [ ] T034 [US2] 實作 backend/src/routes/languages.py：GET /api/languages 端點，回傳 2 種語言清單（zh-TW, en，含 code, name, native_name）
 - [ ] T035 [US2] 在 languages.py 定義語言常數清單（en, zh-TW, ja, ko, fr, de, es, pt, ru, it, ar, hi, th, vi, id）
 - [ ] T036 [US2] 實作 frontend/Services/LanguageService.cs：呼叫 GET /api/languages 並快取語言清單
 - [ ] T037 [US2] 實作 frontend/Components/LanguageSelector.razor：下拉選單元件，顯示語言清單（含 native_name），支援「自動偵測」選項
@@ -192,6 +193,32 @@
 
 ---
 
+## Phase 6.5: Terminology Glossary（術語對照表功能）
+
+**Goal**: 實作自訂術語對照表功能，允許使用者指定特定原文與譯文對應，翻譯時優先使用。
+
+**Why Priority**: 這是用戶額外需求，提升翻譯準確度與客製化能力。
+
+**Independent Test**:
+1. 在前端 UI 新增術語對照項目：「API」→「API」
+2. 輸入包含「API」的文字進行翻譯
+3. 驗證譯文中「API」未被翻譯為其他詞彙
+
+**Tasks**:
+
+- [ ] T086 [P] 實作 frontend/Models/TerminologyGlossary.cs：C# 模型類別，含欄位 SourceText, TargetText, SourceLang, TargetLang, CaseSensitive
+- [ ] T087 [P] 實作 frontend/Components/GlossaryManager.razor：術語對照表管理元件，支援新增/編輯/刪除術語項目
+- [ ] T088 在 Index.razor 整合 GlossaryManager 元件，將術語對照表隨翻譯請求一起傳送
+- [ ] T089 在 backend/src/routes/translate.py 實作 glossary 參數處理：翻譯前替換原文中的術語（或在 prompt 中指定）
+- [ ] T090 [P] 實作 backend/tests/unit/test_glossary.py：測試術語替換邏輯（大小寫敏感、多項匹配）
+- [ ] T091 [P] 實作 frontend bUnit 測試：測試 GlossaryManager 元件渲染與事件處理（TDD）
+- [ ] T092 [P] 實作 frontend bUnit 測試：測試 TranslationInput 元件驗證邏輯（TDD）
+- [ ] T093 [P] 實作 frontend bUnit 測試：測試 ChatBubble 元件布局與樣式（TDD）
+- [ ] T094 [P] 實作 frontend bUnit 測試：測試 LanguageSelector 元件選擇邏輯（TDD）
+- [ ] T095 [P] 實作 frontend bUnit 測試：測試 ToastNotification 元件自動消失行為（TDD）
+
+---
+
 ## Phase 7: Polish & Cross-Cutting Concerns
 
 **Goal**: 完善錯誤處理、效能優化、部署配置、文件完善。
@@ -212,7 +239,7 @@
 - [ ] T081 [P] 建立 frontend/README.md：新增前端元件說明、開發環境設定、建置指令
 - [ ] T082 [P] 在 Index.razor 實作響應式佈局測試（桌面、平板、手機）
 - [ ] T083 執行端到端測試：依序驗證 SC-001 至 SC-009 所有成功標準
-- [ ] T084 效能測試：使用 4B 模型測試 500 字元文字翻譯，驗證 20 秒內回傳第一個 token
+- [ ] T084 [SKIP] ~~效能測試：使用 4B 模型測試 500 字元文字翻譯，驗證 20 秒內回傳第一個 token~~（初期忽略效能測試，先確保功能完整性）
 - [ ] T085 [P] 建立專案部署檢核表：模型下載、config.yaml 配置、Docker Compose 啟動、健康檢查驗證
 
 ---
@@ -265,9 +292,12 @@ Phase 1 (Setup)
 - Phase 4: User Story 2（T034-T044）
 - Phase 5: User Story 3（T045-T054）
 - Phase 6: User Story 4（T055-T069）
+- Phase 6.5: Terminology Glossary（T086-T095，含 bUnit 前端測試 - TDD）
 - Phase 7: 完整 Polish（T070-T085）
 
-**Deliverable**: 所有功能完成，包含語言選擇、對話介面、串流輸出、複製功能。
+**Deliverable**: 所有功能完成，包含語言選擇、對話介面、串流輸出、複製功能、術語對照表，以及完整的前後端測試覆蓋。
+
+**Note on TDD**: 根據用戶需求，前端元件測試採用 TDD 方法，先編寫 bUnit 測試（T091-T095）再實作或重構對應元件。
 
 ---
 
@@ -277,9 +307,9 @@ Phase 1 (Setup)
 |---------|------|---------|---------|
 | **後端單元測試** | pytest | 模型載入、語言偵測、配置解析 | T016, T017, T075 |
 | **後端整合測試** | pytest + TestClient | API 端點功能、錯誤處理 | T033, T043, T044, T069 |
-| **前端元件測試** | bUnit + xUnit | 元件渲染、事件處理 | （Optional，未列入任務） |
+| **前端元件測試** | bUnit + xUnit | 元件渲染、事件處理、TDD | T086, T087, T088, T089, T090 |
 | **端到端測試** | Playwright | 完整使用者流程 | T083 |
-| **效能測試** | 手動計時 + 日誌分析 | 翻譯速度、串流延遲 | T084 |
+| **效能測試** | 手動計時 + 日誌分析 | 翻譯速度、串流延遲 | ~~T084~~（初期忽略） |
 
 ---
 
@@ -293,8 +323,9 @@ Phase 1 (Setup)
 | Phase 4: User Story 2 (P2) | 11 | US2 | 16-22h |
 | Phase 5: User Story 3 (P3) | 10 | US3 | 14-20h |
 | Phase 6: User Story 4 (P4) | 15 | US4 | 22-30h |
+| Phase 6.5: Terminology Glossary | 10 | FR-018 | 15-20h |
 | Phase 7: Polish | 16 | - | 20-28h |
-| **Total** | **85** | - | **114-158h** |
+| **Total** | **95** | - | **129-178h** |
 
 ---
 
@@ -348,7 +379,7 @@ Phase 1 (Setup)
 
 ### Phase 4 (US2) 完成驗證
 
-- [ ] 點擊語言下拉選單，顯示 15+ 種語言
+- [ ] 點擊語言下拉選單，顯示 2 種語言（zh-TW, en）
 - [ ] 選擇「英文 → 繁體中文」，翻譯結果為繁體中文
 - [ ] 選擇「繁體中文 → 英文」，翻譯結果為英文
 - [ ] 選擇相同來源與目標語言，顯示 Toast 提示
