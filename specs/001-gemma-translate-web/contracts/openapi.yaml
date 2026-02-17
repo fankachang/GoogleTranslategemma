@@ -1,0 +1,429 @@
+openapi: 3.0.3
+info:
+  title: TranslateGemma API
+  description: |
+    TranslateGemma 網頁翻譯服務後端 API，提供多語言文字翻譯、語言清單查詢及健康檢查功能。
+    
+    **特性**:
+    - 支援 SSE (Server-Sent Events) 串流輸出
+    - 自動語言偵測（中英文）
+    - 智能語言切換
+    - 無狀態設計
+  version: 1.0.0
+  contact:
+    name: TranslateGemma Project
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8000
+    description: 本地開發環境
+  - url: http://0.0.0.0:8000
+    description: Docker 容器環境
+
+tags:
+  - name: Translation
+    description: 文字翻譯相關API
+  - name: Languages
+    description: 語言相關API
+  - name: Health
+    description: 服務健康檢查
+
+paths:
+  /api/translate:
+    post:
+      tags:
+        - Translation
+      summary: 文字翻譯
+      description: |
+        接收原文並回傳翻譯結果。支援兩種回應格式：
+        - **JSON 回應**: 一次性回傳完整翻譯結果
+        - **SSE 串流**: 逐 token 推送翻譯結果（預設）
+        
+        **自動語言偵測**:
+        - 若 `source_lang` 為 `null`，系統自動偵測（初期僅支援中英文）
+        - 若 `target_lang` 為 `null`，根據 `source_lang` 智能切換：
+          - `zh` → `en`
+          - `en` → `zh`
+      operationId: translateText
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TranslationRequest'
+            examples:
+              autoDetect:
+                summary: 自動偵測語言
+                value:
+                  text: "Hello, world!"
+                  source_lang: null
+                  target_lang: null
+                  stream: true
+              manual:
+                summary: 手動指定語言
+                value:
+                  text: "你好，世界！"
+                  source_lang: "zh"
+                  target_lang: "en"
+                  stream: false
+      responses:
+        '200':
+          description: 翻譯成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslationResponse'
+              example:
+                translation: "你好，世界！"
+                source_lang: "en"
+                target_lang: "zh"
+                detected: true
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE 串流格式，逐 token 推送
+              example: |
+                data: {"token": "你", "done": false}
+
+                data: {"token": "好", "done": false}
+
+                data: {"token": "，", "done": false}
+
+                data: {"token": "世界", "done": false}
+
+                data: {"token": "！", "done": true, "source_lang": "en", "target_lang": "zh", "detected": true}
+
+        '400':
+          description: 請求參數錯誤
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unsupportedLanguage:
+                  summary: 不支援的語言對
+                  value:
+                    error: "unsupported_language"
+                    message: "不支援的語言對：ja → ar"
+                    details:
+                      source_lang: "ja"
+                      target_lang: "ar"
+        '422':
+          description: 輸入驗證失敗
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                textTooLong:
+                  summary: 文字過長
+                  value:
+                    error: "validation_error"
+                    message: "文字過長，請限制在 5000 字元以內"
+                    details:
+                      field: "text"
+                      actual_length: 5234
+                      max_length: 5000
+                emptyInput:
+                  summary: 空白輸入
+                  value:
+                    error: "empty_input"
+                    message: "請輸入文字"
+                    details:
+                      field: "text"
+        '503':
+          description: 服務不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "model_not_loaded"
+                message: "模型初始化中，請稍候片刻"
+                details:
+                  model: "Translategemma-4b-it"
+        '504':
+          description: 翻譯逾時
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "timeout"
+                message: "翻譯逾時，請稍後重試"
+                details:
+                  timeout_seconds: 120
+                  elapsed_seconds: 121
+
+  /api/languages:
+    get:
+      tags:
+        - Languages
+      summary: 取得支援的語言清單
+      description: 回傳系統支援的所有語言及其語言碼，供前端下拉選單使用
+      operationId: getLanguages
+      responses:
+        '200':
+          description: 語言清單查詢成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  languages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Language'
+              example:
+                languages:
+                  - code: "en"
+                    name: "English"
+                    native_name: "English"
+                  - code: "zh"
+                    name: "Chinese (Simplified)"
+                    native_name: "中文（简体）"
+                  - code: "zh-TW"
+                    name: "Chinese (Traditional)"
+                    native_name: "中文（繁體）"
+                  - code: "ja"
+                    name: "Japanese"
+                    native_name: "日本語"
+                  - code: "ko"
+                    name: "Korean"
+                    native_name: "한국어"
+        '500':
+          description: 伺服器內部錯誤
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: 健康檢查
+      description: |
+        確認服務狀態與模型載入情況。回傳以下資訊：
+        - 服務狀態 (`ok`, `degraded`, `error`)
+        - 載入的模型名稱
+        - 推論裝置 (`cuda`, `mps`, `cpu`)
+        - 模型是否已載入完成
+      operationId: healthCheck
+      responses:
+        '200':
+          description: 服務正常運行
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+              examples:
+                ok:
+                  summary: 服務正常
+                  value:
+                    status: "ok"
+                    model: "Translategemma-4b-it"
+                    device: "cuda"
+                    model_loaded: true
+                    uptime_seconds: 3600
+                degraded:
+                  summary: 服務降級（模型未載入）
+                  value:
+                    status: "degraded"
+                    model: "Translategemma-12b-it"
+                    device: "cpu"
+                    model_loaded: false
+                    uptime_seconds: 30
+        '503':
+          description: 服務不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+              example:
+                status: "error"
+                model: null
+                device: null
+                model_loaded: false
+                uptime_seconds: 0
+
+components:
+  schemas:
+    TranslationRequest:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          description: 待翻譯文字
+          example: "Hello, world!"
+        source_lang:
+          type: string
+          nullable: true
+          pattern: '^[a-z]{2}(-[A-Z]{2})?$'
+          description: |
+            來源語言碼（ISO 639-1 格式）。
+            若為 `null`，系統自動偵測（初期僅支援中英文）
+          example: "en"
+        target_lang:
+          type: string
+          nullable: true
+          pattern: '^[a-z]{2}(-[A-Z]{2})?$'
+          description: |
+            目標語言碼（ISO 639-1 格式）。
+            若為 `null`，根據 `source_lang` 智能切換：
+            - `zh` → `en`
+            - `en` → `zh`
+          example: "zh-TW"
+        stream:
+          type: boolean
+          default: true
+          description: 是否使用 SSE 串流輸出
+
+    TranslationResponse:
+      type: object
+      required:
+        - translation
+        - source_lang
+        - target_lang
+        - detected
+      properties:
+        translation:
+          type: string
+          description: 翻譯後文字
+          example: "你好，世界！"
+        source_lang:
+          type: string
+          description: 實際使用的來源語言碼
+          example: "en"
+        target_lang:
+          type: string
+          description: 實際使用的目標語言碼
+          example: "zh"
+        detected:
+          type: boolean
+          description: 是否為自動偵測語言
+          example: true
+
+    StreamToken:
+      type: object
+      description: SSE 串流單個 token
+      required:
+        - token
+        - done
+      properties:
+        token:
+          type: string
+          description: 單個 token 文字
+          example: "你"
+        done:
+          type: boolean
+          description: 是否為最後一個 token
+          example: false
+        source_lang:
+          type: string
+          description: 來源語言碼（僅在 done=true 時回傳）
+          example: "en"
+        target_lang:
+          type: string
+          description: 目標語言碼（僅在 done=true 時回傳）
+          example: "zh"
+        detected:
+          type: boolean
+          description: 是否為自動偵測（僅在 done=true 時回傳）
+          example: true
+
+    Language:
+      type: object
+      required:
+        - code
+        - name
+      properties:
+        code:
+          type: string
+          description: ISO 639-1 語言碼
+          example: "zh-TW"
+        name:
+          type: string
+          description: 語言英文名稱
+          example: "Chinese (Traditional)"
+        native_name:
+          type: string
+          nullable: true
+          description: 語言本地名稱
+          example: "中文（繁體）"
+
+    HealthCheckResponse:
+      type: object
+      required:
+        - status
+        - model
+        - device
+        - model_loaded
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, error]
+          description: |
+            服務狀態：
+            - `ok`: 正常運行
+            - `degraded`: 降級運行（如模型未載入）
+            - `error`: 服務異常
+          example: "ok"
+        model:
+          type: string
+          nullable: true
+          description: 載入的模型名稱
+          example: "Translategemma-4b-it"
+        device:
+          type: string
+          nullable: true
+          enum: [cuda, mps, cpu]
+          description: 推論裝置類型
+          example: "cuda"
+        model_loaded:
+          type: boolean
+          description: 模型是否已載入完成
+          example: true
+        uptime_seconds:
+          type: integer
+          nullable: true
+          description: 服務運行時間（秒）
+          example: 3600
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: 錯誤類型
+          enum:
+            - validation_error
+            - empty_input
+            - timeout
+            - model_not_loaded
+            - unsupported_language
+            - internal_error
+          example: "timeout"
+        message:
+          type: string
+          description: 友善的錯誤訊息（繁體中文）
+          example: "翻譯逾時，請稍後重試"
+        details:
+          type: object
+          nullable: true
+          description: 可選的詳細錯誤資訊
+          additionalProperties: true
+          example:
+            elapsed_seconds: 120
+
+  securitySchemes: {}
+
+security: []
