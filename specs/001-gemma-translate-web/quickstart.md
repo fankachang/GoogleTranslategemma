@@ -229,8 +229,7 @@ curl http://localhost:8000/api/languages
 {
   "languages": [
     {"code": "en", "name": "English", "native_name": "English"},
-    {"code": "zh", "name": "Chinese (Simplified)", "native_name": "中文（简体）"},
-    {"code": "zh-TW", "name": "Chinese (Traditional)", "native_name": "中文（繁體）"}
+    {"code": "zh-TW", "name": "Traditional Chinese", "native_name": "繁體中文"}
   ]
 }
 ```

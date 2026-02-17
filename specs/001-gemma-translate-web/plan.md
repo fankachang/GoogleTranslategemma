@@ -45,8 +45,8 @@
 
 **Scale/Scope**: 
 - 單機部署、無並發限制設計（依硬體資源決定）
-- 支援 15+ 種常用語言
-- 初期僅支援中英文自動偵測
+- 支援 15+ 種常用語言，**主要語言對為繁體中文（zh-TW）<-> 英文（en）**，不支援簡體中文
+- 初期自動語言偵測僅支援繁體中文與英文
 - 支援多瀏覽器分頁/視窗獨立翻譯記錄
 
 ## Constitution Check
@@ -178,7 +178,7 @@ README.md                    # 專案說明與快速開始```
 - ✅ **[data-model.md](./data-model.md)**: 5 個核心實體定義，含 Pydantic/C# schema
   - **TranslationRequest**: text (1-5000 字元), source_lang, target_lang, stream
   - **TranslationResponse**: translation, source_lang, target_lang, detected 旗標
-  - **Language**: code (ISO 639-1), name, native_name（支援 15+ 語言）
+  - **Language**: code (ISO 639-1), name, native_name（支援 15+ 語言，主要為繁體中文與英文）
   - **TranslationHistory**: 前端記憶體內歷史記錄（UUID, 來源/譯文, 時間戳記, 偵測旗標）
   - **HealthCheckResponse**: status (ok/degraded/error), model, device, model_loaded
   - 驗證規則: 前端即時驗證 + 後端 FastAPI Pydantic 驗證

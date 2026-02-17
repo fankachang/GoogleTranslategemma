@@ -104,8 +104,8 @@ data: {"token": "!", "done": true}\n\n
 
 **Rationale**:
 - **即時回饋**: 前端即時偵測，無需等待後端回應
-- **簡單實作**: 初期僅支援中英文，正則表達式即可處理：
-  - 中文: `/[\u4e00-\u9fa5]/` （Unicode CJK Unified Ideographs）
+- **簡單實作**: 初期僅支援繁體中文與英文，正則表達式即可處理：
+  - 繁體中文: `/[\u4e00-\u9fa5]/` （Unicode CJK Unified Ideographs）
   - 英文: `/[a-zA-Z]/`
 - **後端容錯**: 後端再次確認語言，避免前端誤判
 - **擴展彈性**: 未來可替換為 `langdetect` 或 `fastText` 支援更多語言
@@ -128,7 +128,7 @@ def detect_language(text: str) -> str:
 
 | 選項 | 優點 | 缺點 | 為何未採用 |
 |------|------|------|------------|
-| **langdetect** | 支援 55+ 語言、高準確度 | 額外依賴、短文本準確度降低 | 初期僅需中英文，YAGNI |
+| **langdetect** | 支援 55+ 語言、高準確度 | 額外依賴、短文本準確度降低 | 初期僅需繁體中文與英文，YAGNI |
 | **fastText (語言識別模型)** | Meta 官方、準確度極高 | 模型檔案 130MB+、overkill | 本場景簡單正則即可 |
 | **後端 API 呼叫 (如 Google Translate API)** | 準確度高、免運維 | 需網路、延遲高、不符合本地化需求 | 增加網路依賴，違反設計原則 |
 

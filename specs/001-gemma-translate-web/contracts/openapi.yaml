@@ -41,10 +41,10 @@ paths:
         - **SSE 串流**: 逐 token 推送翻譯結果（預設）
         
         **自動語言偵測**:
-        - 若 `source_lang` 為 `null`，系統自動偵測（初期僅支援中英文）
+        - 若 `source_lang` 為 `null`，系統自動偵測（初期僅支援繁體中文與英文）
         - 若 `target_lang` 為 `null`，根據 `source_lang` 智能切換：
-          - `zh` → `en`
-          - `en` → `zh`
+          - `zh-TW` → `en`
+          - `en` → `zh-TW`
       operationId: translateText
       requestBody:
         required: true
@@ -64,7 +64,7 @@ paths:
                 summary: 手動指定語言
                 value:
                   text: "你好，世界！"
-                  source_lang: "zh"
+                  source_lang: "zh-TW"
                   target_lang: "en"
                   stream: false
       responses:
@@ -77,7 +77,7 @@ paths:
               example:
                 translation: "你好，世界！"
                 source_lang: "en"
-                target_lang: "zh"
+                target_lang: "zh-TW"
                 detected: true
             text/event-stream:
               schema:
@@ -92,7 +92,7 @@ paths:
 
                 data: {"token": "世界", "done": false}
 
-                data: {"token": "！", "done": true, "source_lang": "en", "target_lang": "zh", "detected": true}
+                data: {"token": "！", "done": true, "source_lang": "en", "target_lang": "zh-TW", "detected": true}
 
         '400':
           description: 請求參數錯誤
@@ -180,12 +180,9 @@ paths:
                   - code: "en"
                     name: "English"
                     native_name: "English"
-                  - code: "zh"
-                    name: "Chinese (Simplified)"
-                    native_name: "中文（简体）"
                   - code: "zh-TW"
-                    name: "Chinese (Traditional)"
-                    native_name: "中文（繁體）"
+                    name: "Traditional Chinese"
+                    native_name: "繁體中文"
                   - code: "ja"
                     name: "Japanese"
                     native_name: "日本語"
@@ -275,9 +272,9 @@ components:
           pattern: '^[a-z]{2}(-[A-Z]{2})?$'
           description: |
             目標語言碼（ISO 639-1 格式）。
-            若為 `null`，根據 `source_lang` 智能切換：
-            - `zh` → `en`
-            - `en` → `zh`
+                        若為 `null`，根據 `source_lang` 智能切換：
+            - `zh-TW` → `en`
+            - `en` → `zh-TW`
           example: "zh-TW"
         stream:
           type: boolean
@@ -303,7 +300,7 @@ components:
         target_lang:
           type: string
           description: 實際使用的目標語言碼
-          example: "zh"
+          example: "en"
         detected:
           type: boolean
           description: 是否為自動偵測語言
@@ -331,7 +328,7 @@ components:
         target_lang:
           type: string
           description: 目標語言碼（僅在 done=true 時回傳）
-          example: "zh"
+          example: "en"
         detected:
           type: boolean
           description: 是否為自動偵測（僅在 done=true 時回傳）

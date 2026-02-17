@@ -162,12 +162,11 @@ public class Language
 }
 ```
 
-**Supported Languages** (初期 15+ 種):
+**Supported Languages** (初期 15+ 種，主要為繁體中文與英文):
 ```json
 [
   {"code": "en", "name": "English", "native_name": "English"},
-  {"code": "zh", "name": "Chinese (Simplified)", "native_name": "中文（简体）"},
-  {"code": "zh-TW", "name": "Chinese (Traditional)", "native_name": "中文（繁體）"},
+  {"code": "zh-TW", "name": "Traditional Chinese", "native_name": "繁體中文"},
   {"code": "ja", "name": "Japanese", "native_name": "日本語"},
   {"code": "ko", "name": "Korean", "native_name": "한국어"},
   {"code": "fr", "name": "French", "native_name": "Français"},
@@ -378,8 +377,8 @@ class HealthCheckResponse(BaseModel):
 
 2. **智能語言切換**:
    - 若 `target_lang` 為 `null`：
-     - `source_lang == "zh"` → `target_lang = "en"`
-     - `source_lang == "en"` → `target_lang = "zh"`
+     - `source_lang == "zh-TW"` → `target_lang = "en"`（繁體中文 → 英文）
+     - `source_lang == "en"` → `target_lang = "zh-TW"`（英文 → 繁體中文）
      - 其他語言 → 回傳錯誤
 
 3. **相同語言對檢查**:
