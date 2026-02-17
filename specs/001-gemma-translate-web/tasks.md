@@ -96,7 +96,8 @@
 - [ ] T030 [US1] 實作 frontend/Pages/Index.razor：整合 TranslationInput 元件，顯示翻譯結果文字（暫時簡單顯示，不使用對話泡泡）
 - [ ] T031 [US1] 在 Program.cs 註冊 TranslationService 為 Scoped 服務
 - [ ] T032 [US1] 在 Index.razor 實作載入狀態顯示（翻譯中...提示）
-- [ ] T033 [US1] 實作 backend/tests/integration/test_api_endpoints.py：測試 POST /api/translate 端點（成功案例、空白輸入、超長文字、特殊字符如 emoji/換行/符號）
+- [ ] T033 [US1] 實作 backend/tests/integration/test_api_endpoints.py：測試 POST /api/translate 端點（成功案例、空白輸入、超長文字）
+- [ ] T033a [US1] 新增特殊字元處理測試至 test_api_endpoints.py：測試 emoji (😀🎉)、符號 (@#$%)、換行符 (\n) 等特殊字元的翻譯與格式保留
 
 ---
 
@@ -108,17 +109,17 @@
 
 **Independent Test Criteria**:
 1. 開啟網頁，點擊語言下拉選單
-2. 驗證顯示 15+ 種語言選項（en, zh-TW, ja, ko, fr, de, es, pt, ru, it, ar, hi, th, vi, id）
+2. 驗證顯示 2 種語言選項（zh-TW, en）
 3. 手動選擇「英文 → 繁體中文」
 4. 輸入 "Good morning"，送出翻譯
 5. 驗證翻譯結果為繁體中文
-6. 切換為「日文 → 英文」，輸入「おはよう」
+6. 切換為「繁體中文 → 英文」，輸入「早安」
 7. 驗證翻譯結果為英文
 
 **Tasks**:
 
 - [ ] T034 [US2] 實作 backend/src/routes/languages.py：GET /api/languages 端點，回傳 2 種語言清單（zh-TW, en，含 code, name, native_name）
-- [ ] T035 [US2] 在 languages.py 定義語言常數清單（en, zh-TW, ja, ko, fr, de, es, pt, ru, it, ar, hi, th, vi, id）
+- [ ] T035 [US2] 在 languages.py 定義語言常數清單（**僅支援 zh-TW 與 en 兩種語言**，不支援其他語言）
 - [ ] T036 [US2] 實作 frontend/Services/LanguageService.cs：呼叫 GET /api/languages 並快取語言清單
 - [ ] T037 [US2] 實作 frontend/Components/LanguageSelector.razor：下拉選單元件，顯示語言清單（含 native_name），支援「自動偵測」選項
 - [ ] T038 [US2] 在 Index.razor 整合 2 個 LanguageSelector 元件（來源語言、目標語言）
@@ -126,8 +127,8 @@
 - [ ] T040 [US2] 在 TranslationService.cs 更新請求邏輯，支援傳送 source_lang 與 target_lang 參數
 - [ ] T041 [US2] 在 backend translate.py 實作語言對驗證（檢查語言碼是否在白名單中）
 - [ ] T042 [US2] 在 Index.razor 實作相同語言對檢查：source_lang == target_lang 時顯示 Toast 提示
-- [ ] T043 [US2] 實作 backend/tests/integration/test_api_endpoints.py：測試 GET /api/languages 端點
-- [ ] T044 [US2] 實作 backend/tests/integration/test_api_endpoints.py：測試手動選擇語言對的翻譯請求
+- [ ] T043 [US2] 實作 backend/tests/integration/test_api_endpoints.py：測試 GET /api/languages 端點，驗證僅回傳 zh-TW 與 en 兩種語言
+- [ ] T044 [US2] 實作 backend/tests/integration/test_api_endpoints.py：測試手動選擇語言對的翻譯請求（en⇔zh-TW）
 
 ---
 
@@ -193,11 +194,11 @@
 
 ---
 
-## Phase 6.5: Terminology Glossary（術語對照表功能）
+## Phase 6.5: Terminology Glossary（術語對照表功能 - 可選）
 
-**Goal**: 實作術語對照表功能，透過 config.yaml 設定檔持久化管理，允許管理者定義特定原文與譯文對應，翻譯時自動應用。
+**Goal**: 實作可選的術語對照表功能，透過 config.yaml 設定檔管理。**當 config.yaml 包含 `glossary.enabled: true` 及 `glossary.entries` 區塊時啟用，未設定此區塊則忽略此功能**。
 
-**Why Priority**: 這是用戶額外需求，提升翻譯準確度與客製化能力。術語對照表透過配置檔管理，確保重啟後仍保留設定。
+**Why Priority**: 這是可選的增強功能，提升翻譯準確度與客製化能力。術語對照表透過配置檔管理，確保重啟後仍保留設定。
 
 **Independent Test**:
 1. 在 config.yaml 中定義術語對照項目：「API」→「API」
@@ -207,16 +208,16 @@
 
 **Tasks**:
 
-- [ ] T086 在 backend/src/config.py 實作術語對照表配置載入：從 config.yaml 讀取 glossary.entries 並驗證格式
-- [ ] T087 在 backend/src/routes/translate.py 實作術語對照表應用：翻譯前根據語言對自動替換原文中的術語
-- [ ] T088 [P] 實作 backend/tests/unit/test_glossary.py：測試術語替換邏輯（大小寫敏感、多項匹配、雙向對照）
-- [ ] T089 [P] (Optional) 實作 backend/src/routes/glossary.py：GET /api/glossary 端點，回傳當前啟用的術語對照表
-- [ ] T090 [P] (Optional) 實作 frontend/Components/GlossaryViewer.razor：顯示當前術語對照表內容的唯讀元件
+- [ ] T086 在 backend/src/config.py 實作術語對照表配置載入：從 config.yaml 讀取 glossary.enabled 和 glossary.entries，若未設定此區塊則跳過
+- [ ] T087 在 backend/src/routes/translate.py 實作術語對照表應用：翻譯前檢查 glossary.enabled，若為 true 則根據語言對自動替換原文中的術語
+- [ ] T088 [P] 實作 backend/tests/unit/test_glossary.py：測試術語替換邏輯（大小寫敏感、多項匹配、未設定時忽略）
+- [ ] T089 [P] (Optional - 前端顯示功能) 實作 backend/src/routes/glossary.py：GET /api/glossary 端點，回傳當前啟用的術語對照表
+- [ ] T090 [P] (Optional - 前端顯示功能) 實作 frontend/Components/GlossaryViewer.razor：顯示當前術語對照表內容的唯讀元件
 - [ ] T091 [P] 實作 frontend bUnit 測試：測試 TranslationInput 元件驗證邏輯（TDD）
 - [ ] T092 [P] 實作 frontend bUnit 測試：測試 ChatBubble 元件布局與樣式（TDD）
 - [ ] T093 [P] 實作 frontend bUnit 測試：測試 LanguageSelector 元件選擇邏輯（TDD）
 - [ ] T094 [P] 實作 frontend bUnit 測試：測試 ToastNotification 元件自動消失行為（TDD）
-- [ ] T095 [P] (Optional) 實作 frontend bUnit 測試：測試 GlossaryViewer 元件顯示邏輯（TDD）
+- [ ] T095 [P] (Optional - 前端顯示功能) 實作 frontend bUnit 測試：測試 GlossaryViewer 元件顯示邏輯（TDD）
 
 ---
 
@@ -320,13 +321,13 @@ Phase 1 (Setup)
 |-------|-----------|-------|----------------|
 | Phase 1: Setup | 8 | - | 4-6h |
 | Phase 2: Foundational | 12 | - | 18-24h |
-| Phase 3: User Story 1 (P1) | 13 | US1 | 20-28h |
+| Phase 3: User Story 1 (P1) | 14 | US1 | 21-29h |
 | Phase 4: User Story 2 (P2) | 11 | US2 | 16-22h |
 | Phase 5: User Story 3 (P3) | 10 | US3 | 14-20h |
 | Phase 6: User Story 4 (P4) | 15 | US4 | 22-30h |
-| Phase 6.5: Terminology Glossary | 10 | FR-018 | 15-20h |
+| Phase 6.5: Terminology Glossary | 10 | FR-018 (可選) | 15-20h |
 | Phase 7: Polish | 16 | - | 20-28h |
-| **Total** | **95** | - | **129-178h** |
+| **Total** | **96** | - | **130-179h** |
 
 ---
 
