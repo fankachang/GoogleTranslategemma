@@ -36,3 +36,33 @@ translation:
   
   # 翻譯逾時秒數
   timeout: 120
+
+# 術語對照表設定（可選）
+# 定義特定詞彙的翻譯對應，翻譯時優先使用這些對應
+glossary:
+  # 啟用術語對照表功能
+  enabled: true
+  
+  # 術語對照項目清單
+  # 每個項目包含: source(原文), target(譯文), source_lang, target_lang, case_sensitive(是否區分大小寫)
+  entries:
+    # 範例：技術術語保持原文
+    - source: "API"
+      target: "API"
+      source_lang: "en"
+      target_lang: "zh-TW"
+      case_sensitive: false
+    
+    # 範例：專有名詞指定翻譯
+    - source: "machine learning"
+      target: "機器學習"
+      source_lang: "en"
+      target_lang: "zh-TW"
+      case_sensitive: false
+    
+    # 範例：雙向對照（中翻英）
+    - source: "人工智慧"
+      target: "Artificial Intelligence"
+      source_lang: "zh-TW"
+      target_lang: "en"
+      case_sensitive: false

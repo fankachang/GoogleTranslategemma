@@ -24,7 +24,9 @@
 | `source_lang` | `string` | ❌ | 來源語言碼(如 `en`, `zh-TW`) | ISO 639-1 格式,若為 `null` 則自動偵測 |
 | `target_lang` | `string` | ❌ | 目標語言碼(如 `zh-TW`, `en`) | ISO 639-1 格式,若為 `null` 則根據 `source_lang` 智能切換 |
 | `stream` | `boolean` | ❌ | 是否使用串流輸出 | 預設 `true` |
-| `glossary` | `array` | ❌ | 自訂術語對照表 | 可選,格式為 `[{"source": "...", "target": "..."}]` |
+| `glossary` | `array` | ❌ | 臨時術語對照表(可選) | 覆蓋或擴充 config.yaml 中的術語對照表,格式為 `[{"source": "...", "target": "..."}]` |
+
+**Note**: 術語對照表主要透過後端 `config.yaml` 配置持久化管理。前端可選擇性傳遞 `glossary` 參數進行臨時覆蓋或擴充,優先級高於配置檔。
 
 **Example (JSON)**:
 ```json
@@ -277,39 +279,67 @@ class HealthCheckResponse(BaseModel):
 
 ### 6. Terminology Glossary(術語對照表)
 
-代表使用者自訂的詞彙翻譯對應,**僅存在於瀏覽器記憶體中**。
+代表使用者自訂的詞彙翻譯對應,**透過後端 config.yaml 設定檔持久化儲存**。
 
 **Attributes**:
 
 | 欄位 | 類型 | 必填 | 說明 |
 |------|------|------|------|
-| `id` | `string` | ✅ | 唯一識別碼(前端生成 UUID) |
 | `source_text` | `string` | ✅ | 原文詞彙 |
 | `target_text` | `string` | ✅ | 對應譯文 |
 | `source_lang` | `string` | ✅ | 來源語言碼 |
 | `target_lang` | `string` | ✅ | 目標語言碼 |
 | `case_sensitive` | `boolean` | ✅ | 是否區分大小寫(預設 `false`) |
-| `created_at` | `DateTime` | ✅ | 建立時間 |
 
-**Frontend Model (C# - Blazor State)**:
+**Backend Schema (Python Pydantic)**:
+```python
+class GlossaryEntry(BaseModel):
+    source: str = Field(..., description="原文詞彙")
+    target: str = Field(..., description="對應譯文")
+    source_lang: str = Field("en", description="來源語言碼")
+    target_lang: str = Field("zh-TW", description="目標語言碼")
+    case_sensitive: bool = Field(False, description="是否區分大小寫")
+
+class GlossaryConfig(BaseModel):
+    enabled: bool = Field(True, description="是否啟用術語對照表")
+    entries: list[GlossaryEntry] = Field(default_factory=list, description="術語對照項目")
+```
+
+**Frontend Model (C# - Display Only)**:
 ```csharp
 public class TerminologyGlossary
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
     public string SourceText { get; set; } = string.Empty;
     public string TargetText { get; set; } = string.Empty;
     public string SourceLang { get; set; } = "en";
     public string TargetLang { get; set; } = "zh-TW";
     public bool CaseSensitive { get; set; } = false;
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
 }
 ```
 
-**Usage**:
-- 使用者在前端界面增加/編輯/刪除術語對照項目
-- 翻譯時,將有效的術語對照表作為 `glossary` 參數傳送給後端
-- 後端在翻譯前先替換原文中的術語(或在 prompt 中指定)
-- 頁面重新整理或關閉時自動清除
+**Storage & Usage**:
+- **後端配置**: 術語對照表定義在 `config.yaml` 的 `glossary.entries` 區塊中
+- **後端載入**: 服務啟動時從配置檔讀取術語對照表
+- **翻譯應用**: 後端在翻譯前自動替換原文中匹配的術語(或在 prompt 中指定)
+- **前端顯示**: 前端可透過 API 查詢當前啟用的術語對照表(可選功能)
+- **修改方式**: 編輯 `config.yaml` 並重啟服務生效
+
+**Configuration Example** (in `config.yaml`):
+```yaml
+glossary:
+  enabled: true
+  entries:
+    - source: "API"
+      target: "API"
+      source_lang: "en"
+      target_lang: "zh-TW"
+      case_sensitive: false
+    - source: "machine learning"
+      target: "機器學習"
+      source_lang: "en"
+      target_lang: "zh-TW"
+      case_sensitive: false
+```
 
 ---
 

@@ -32,7 +32,7 @@
 - [ ] T001 根據 plan.md 建立專案目錄結構：backend/, frontend/, config.example.yaml, docker-compose.yaml, Containerfile
 - [ ] T002 [P] 建立後端 requirements.txt，包含 fastapi, uvicorn, transformers, torch, pyyaml, pytest, pytest-asyncio
 - [ ] T003 [P] 建立前端 frontend.csproj，配置 .NET 10 Blazor WASM 專案，新增 MudBlazor NuGet 套件
-- [ ] T004 [P] 建立 config.example.yaml 配置範例檔案（模型名稱、裝置、timeout、CORS 設定）
+- [ ] T004 [P] 建立 config.example.yaml 配置範例檔案（模型名稱、裝置、timeout、CORS 設定、術語對照表範例）
 - [ ] T005 [P] 更新根目錄 .gitignore，排除 config.yaml, backend/__pycache__/, frontend/bin/, frontend/obj/
 - [ ] T006 [P] 建立 backend/src/__init__.py 和 backend/tests/conftest.py 空檔案
 - [ ] T007 [P] 建立 frontend/Program.cs 基礎 Blazor WASM 啟動設定，註冊 HttpClient 和 MudBlazor 服務
@@ -195,27 +195,28 @@
 
 ## Phase 6.5: Terminology Glossary（術語對照表功能）
 
-**Goal**: 實作自訂術語對照表功能，允許使用者指定特定原文與譯文對應，翻譯時優先使用。
+**Goal**: 實作術語對照表功能，透過 config.yaml 設定檔持久化管理，允許管理者定義特定原文與譯文對應，翻譯時自動應用。
 
-**Why Priority**: 這是用戶額外需求，提升翻譯準確度與客製化能力。
+**Why Priority**: 這是用戶額外需求，提升翻譯準確度與客製化能力。術語對照表透過配置檔管理，確保重啟後仍保留設定。
 
 **Independent Test**:
-1. 在前端 UI 新增術語對照項目：「API」→「API」
-2. 輸入包含「API」的文字進行翻譯
-3. 驗證譯文中「API」未被翻譯為其他詞彙
+1. 在 config.yaml 中定義術語對照項目：「API」→「API」
+2. 重啟後端服務
+3. 輸入包含「API」的文字進行翻譯
+4. 驗證譯文中「API」未被翻譯為其他詞彙
 
 **Tasks**:
 
-- [ ] T086 [P] 實作 frontend/Models/TerminologyGlossary.cs：C# 模型類別，含欄位 SourceText, TargetText, SourceLang, TargetLang, CaseSensitive
-- [ ] T087 [P] 實作 frontend/Components/GlossaryManager.razor：術語對照表管理元件，支援新增/編輯/刪除術語項目
-- [ ] T088 在 Index.razor 整合 GlossaryManager 元件，將術語對照表隨翻譯請求一起傳送
-- [ ] T089 在 backend/src/routes/translate.py 實作 glossary 參數處理：翻譯前替換原文中的術語（或在 prompt 中指定）
-- [ ] T090 [P] 實作 backend/tests/unit/test_glossary.py：測試術語替換邏輯（大小寫敏感、多項匹配）
-- [ ] T091 [P] 實作 frontend bUnit 測試：測試 GlossaryManager 元件渲染與事件處理（TDD）
-- [ ] T092 [P] 實作 frontend bUnit 測試：測試 TranslationInput 元件驗證邏輯（TDD）
-- [ ] T093 [P] 實作 frontend bUnit 測試：測試 ChatBubble 元件布局與樣式（TDD）
-- [ ] T094 [P] 實作 frontend bUnit 測試：測試 LanguageSelector 元件選擇邏輯（TDD）
-- [ ] T095 [P] 實作 frontend bUnit 測試：測試 ToastNotification 元件自動消失行為（TDD）
+- [ ] T086 在 backend/src/config.py 實作術語對照表配置載入：從 config.yaml 讀取 glossary.entries 並驗證格式
+- [ ] T087 在 backend/src/routes/translate.py 實作術語對照表應用：翻譯前根據語言對自動替換原文中的術語
+- [ ] T088 [P] 實作 backend/tests/unit/test_glossary.py：測試術語替換邏輯（大小寫敏感、多項匹配、雙向對照）
+- [ ] T089 [P] (Optional) 實作 backend/src/routes/glossary.py：GET /api/glossary 端點，回傳當前啟用的術語對照表
+- [ ] T090 [P] (Optional) 實作 frontend/Components/GlossaryViewer.razor：顯示當前術語對照表內容的唯讀元件
+- [ ] T091 [P] 實作 frontend bUnit 測試：測試 TranslationInput 元件驗證邏輯（TDD）
+- [ ] T092 [P] 實作 frontend bUnit 測試：測試 ChatBubble 元件布局與樣式（TDD）
+- [ ] T093 [P] 實作 frontend bUnit 測試：測試 LanguageSelector 元件選擇邏輯（TDD）
+- [ ] T094 [P] 實作 frontend bUnit 測試：測試 ToastNotification 元件自動消失行為（TDD）
+- [ ] T095 [P] (Optional) 實作 frontend bUnit 測試：測試 GlossaryViewer 元件顯示邏輯（TDD）
 
 ---
 

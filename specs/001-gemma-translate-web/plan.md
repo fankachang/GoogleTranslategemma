@@ -179,12 +179,12 @@ README.md                    # 專案說明與快速開始```
 
 ### Phase 1: Data Model & Contracts
 - ✅ **[data-model.md](./data-model.md)**: 6 個核心實體定義，含 Pydantic/C# schema
-  - **TranslationRequest**: text (1-5000 字元), source_lang, target_lang, stream, glossary(術語對照表)
+  - **TranslationRequest**: text (1-5000 字元), source_lang, target_lang, stream, glossary(可選臨時覆蓋)
   - **TranslationResponse**: translation, source_lang, target_lang, detected 旗標
   - **Language**: code (ISO 639-1), name, native_name（僅支援 zh-TW 和 en）
   - **TranslationHistory**: 前端記憶體內歷史記錄（UUID, 來源/譯文, 時間戳記, 偵測旗標）
   - **HealthCheckResponse**: status (ok/degraded/error), model, device, model_loaded
-  - **TerminologyGlossary**: 自訂術語對照表（source_text, target_text, source_lang, target_lang, case_sensitive）
+  - **TerminologyGlossary**: 術語對照表（透過 config.yaml 持久化管理，前端可選擇性臨時覆蓋）
   - 驗證規則: 前端即時驗證 + 後端 FastAPI Pydantic 驗證
   - 狀態轉換: Created → Validating → Sending → Streaming → Completed
   - 錯誤模型: 6 種常見錯誤類型（validation_error, timeout, model_not_loaded 等）
