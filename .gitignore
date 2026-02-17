@@ -1,0 +1,174 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# macOS
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+
+# Logs and databases
+*.log
+*.sqlite3
+
+# Environment files
+.env
+.env.*
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Model binaries and large artifacts
+models/**/model-*.safetensors
+models/**/model.safetensors.index.json
+models/**/model-*.ckpt
+models/**/model-*.pt
+
+# Tokenizers / caches
+tokenizer.model
+tokenizer.json
+
+# Build / dist
+dist/
+build/
+*.egg-info/
+
+# Temporary
+tmp/
+temp/# ========================================
+# 模型檔案（太大，不納入版本控制）
+# ========================================
+models/
+
+# ========================================
+# 敏感資料與金鑰
+# ========================================
+*.key
+*.pem
+*.p12
+*.pfx
+*.env
+.env.*
+!.env.example
+config.local.yaml
+secrets/
+credentials/
+*.secret
+
+# ========================================
+# Python
+# ========================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+
+# ========================================
+# .NET
+# ========================================
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]rm/
+[Aa]rm64/
+bld/
+[Bb]in/
+[Oo]bj/
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+*.sln.iml
+
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# VS Code workspace
+*.code-workspace
+
+# ========================================
+# 容器相關
+# ========================================
+*.tar
+*.tar.gz
+
+# ========================================
+# 作業系統
+# ========================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ========================================
+# 日誌與暫存檔
+# ========================================
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.swp
+*.swo
+*~
