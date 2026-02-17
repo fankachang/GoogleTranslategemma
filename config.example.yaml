@@ -1,0 +1,38 @@
+# ========================================
+# TranslateGemma 翻譯服務設定檔範例
+# ========================================
+# 複製此檔案為 config.yaml 並根據需求調整
+
+# 模型設定
+model:
+  # 模型選擇: "4b" | "12b"
+  # 4B 適合記憶體有限環境，12B 提供更高翻譯品質
+  name: "4b"
+  
+  # 模型存放路徑（相對於專案根目錄）
+  base_path: "models"
+  
+  # 推論裝置: "auto" | "cpu" | "cuda" | "mps"
+  # auto 會依序偵測: cuda → mps → cpu
+  device: "auto"
+  
+  # 資料型別: "auto" | "bfloat16" | "float16" | "float32"
+  # auto 會依裝置自動選擇: CUDA/MPS → bfloat16, CPU → float32
+  dtype: "auto"
+
+# 伺服器設定
+server:
+  # 監聽位址
+  # 0.0.0.0 允許外部存取，127.0.0.1 僅允許本機
+  host: "0.0.0.0"
+  
+  # 監聽埠號
+  port: 8000
+
+# 翻譯設定
+translation:
+  # 最大生成 token 數量
+  max_new_tokens: 512
+  
+  # 翻譯逾時秒數
+  timeout: 120
