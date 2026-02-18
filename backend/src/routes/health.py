@@ -9,10 +9,17 @@ def health(request: Request):
     model = getattr(app.state, "model", None)
     loaded = False
     if model is not None:
-        # model.model is None when real model not loaded
         loaded = getattr(model, "model", None) is not None
+
+    if loaded:
+        status = "ok"
+    elif model is not None:
+        status = "degraded"  # model 物件存在但未載入
+    else:
+        status = "error"
+
     return {
-        "status": "ok",
+        "status": status,
         "model_name": getattr(app.state, "model_name", None),
         "device": getattr(app.state, "device", None),
         "model_loaded": loaded,

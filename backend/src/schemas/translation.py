@@ -12,4 +12,6 @@ class TranslationRequest(BaseModel):
 class TranslationResponse(BaseModel):
     translated_text: str
     detected_source_lang: Optional[str] = None
+    detected: bool = False
+    target_lang: Optional[str] = None
     model_name: Optional[str] = None
