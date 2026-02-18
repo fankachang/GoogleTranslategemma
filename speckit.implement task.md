@@ -10,7 +10,13 @@ speckit 實作任務說明
 - 根據需求填寫實作細節
 - 每完成一小步即 commit
 - 子任務：
-  - 設計資料模型與資料結構
+  - 設計資料模型與資料結構（已完成）
+    - Speckit 主要資料結構：
+      - Project: { id: string, name: string, description: string, created_at: datetime }
+      - Task: { id: string, project_id: string, title: string, status: enum(pending, in_progress, done), assignee?: string, created_at: datetime, updated_at: datetime }
+      - Event: { id: string, task_id: string, type: string, payload: object, timestamp: datetime }
+    - 儲存選項：支援 JSON 檔案儲存與 SQLite（視需求切換）
+    - 資料驗證：使用簡單 schema 驗證（例如 JSON Schema 或自訂驗證函式）
   - 撰寫核心函式與模組
   - 加入單元測試
   - 撰寫使用範例與 README 範例段落
