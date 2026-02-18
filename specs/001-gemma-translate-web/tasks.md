@@ -233,12 +233,12 @@
 - [X] T073 在 translate.py 實作逾時機制：翻譯超過 120 秒自動中斷並回傳 504 錯誤
 - [X] T074 在 Index.razor 實作錯誤訊息顯示邏輯：嚴重錯誤加入 TranslationHistory 並以紅色泡泡顯示
 - [X] T075 實作 backend/tests/unit/test_model.py：測試模型載入、推論、裝置選擇邏輯
-- [ ] T076 [P] 建立 Containerfile：多階段構建，包含 Python 環境與模型檔案
-- [ ] T077 [P] 建立 docker-compose.yaml：定義 backend, frontend 服務，配置 volumes 與 ports
-- [ ] T078 [P] 在 docker-compose.yaml 實作健康檢查：定期呼叫 /health 端點
-- [ ] T079 更新根目錄 README.md：新增專案描述、功能特性、快速開始連結
-- [ ] T080 [P] 建立 backend/README.md：新增後端架構說明、本地開發步驟、測試指令
-- [ ] T081 [P] 建立 frontend/README.md：新增前端元件說明、開發環境設定、建置指令
+- [X] T076 [P] 建立 Containerfile：多階段構建，包含 Python 環境與模型檔案
+- [X] T077 [P] 建立 docker-compose.yaml：定義 backend, frontend 服務，配置 volumes 與 ports
+- [X] T078 [P] 在 docker-compose.yaml 實作健康檢查：定期呼叫 /health 端點
+- [X] T079 更新根目錄 README.md：新增專案描述、功能特性、快速開始連結
+- [X] T080 [P] 建立 backend/README.md：新增後端架構說明、本地開發步驟、測試指令
+- [X] T081 [P] 建立 frontend/README.md：新增前端元件說明、開發環境設定、建置指令
 - [ ] T082 [P] 在 Index.razor 實作響應式佈局測試（桌面、平板、手機）
 - [ ] T083 執行端到端測試：依序驗證 SC-001 至 SC-009 所有成功標準
 - [ ] T084 [SKIP] ~~效能測試：使用 4B 模型測試 500 字元文字翻譯，驗證 20 秒內回傳第一個 token~~（初期忽略效能測試，先確保功能完整性）

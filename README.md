@@ -4,9 +4,9 @@
 
 ## 📋 專案特色
 
-- 🌐 **前端**：Blazor WebAssembly (.NET 10)，完全在瀏覽器運行
-- ⚡ **後端**：FastAPI (Python)，高效能非同步 API
-- 🤖 **模型**：TranslateGemma 4B / 12B，支援 55 種語言
+- 🌐 **前端**：Blazor WebAssembly (.NET 9) + MudBlazor，完全在瀏覽器運行
+- ⚡ **後端**：FastAPI (Python)，高效能非同步 API，支援 SSE 串流
+- 🤖 **模型**：TranslateGemma 4B / 12B，支援繁體中文 ↔ 英文雙向翻譯
 - 🎯 **簡單設計**：無帳號管理、無持久化，關閉即清除
 - 🖥️ **多裝置支援**：NVIDIA CUDA、Apple MPS、CPU
 
@@ -15,7 +15,7 @@
 ### 前置需求
 
 - Python 3.10+
-- .NET 10 SDK
+- .NET 9 SDK
 - Podman 或 Docker（容器部署）
 - （選用）NVIDIA GPU with CUDA 或 Apple Silicon Mac（加速推論）
 
@@ -116,7 +116,7 @@ dotnet run
 
 | 層級 | 技術 |
 |------|------|
-| 前端 | Blazor WebAssembly (.NET 10) + MudBlazor |
+| 前端 | Blazor WebAssembly (.NET 9) + MudBlazor |
 | 後端 | Python FastAPI |
 | 模型 | Google TranslateGemma (Hugging Face Transformers) |
 | 推論加速 | CUDA / MPS / CPU |
@@ -124,11 +124,9 @@ dotnet run
 
 ## 🌍 支援語言
 
-支援 55 種語言，常用語言包括：
+本服務目前支援 **繁體中文 (zh-TW) ↔ 英文 (en)** 雙向翻譯。
 
-English, 中文, 日本語, 한국어, Français, Deutsch, Español, Português, Русский, Italiano, العربية, हिन्दी, ไทย, Tiếng Việt, Bahasa Indonesia, Türkçe, Polski, Nederlands, Čeština, Svenska 等
-
-完整語言列表請參考 [需求規格書](Docs/001_requestment.md#8-支援語言模型涵蓋-55-語言擷取常用清單)。
+來源語言可選擇「自動偵測」，系統會根據輸入文字自動判斷語言。
 
 ## 📝 授權
 
