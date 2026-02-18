@@ -102,6 +102,13 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 
+# Project-specific ignores
+config.yaml
+backend/__pycache__/
+frontend/bin/
+frontend/obj/
+
+
 # ========================================
 # .NET
 # ========================================
