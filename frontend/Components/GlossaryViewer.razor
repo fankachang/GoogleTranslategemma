@@ -1,0 +1,96 @@
+@namespace TranslateGemma.Components
+@using System.Net.Http.Json
+@using TranslateGemma.Models
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Class="mr-2" Style="vertical-align:sub;" />
+            術語對照表
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_loading)
+        {
+            <div class="d-flex justify-center pa-4">
+                <MudProgressCircular Indeterminate="true" />
+            </div>
+        }
+        else if (_error != null)
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        }
+        else if (!_result.Enabled)
+        {
+            <MudAlert Severity="Severity.Info">
+                術語對照表功能未啟用。請在 <code>config.yaml</code> 中設定 <code>glossary.enabled: true</code> 並重啟後端服務。
+            </MudAlert>
+        }
+        else if (_result.Entries.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">術語對照表已啟用，但目前無任何項目。</MudAlert>
+        }
+        else
+        {
+            <MudText Typo="Typo.caption" Class="mb-2" Style="opacity:.7;">
+                共 @_result.Entries.Count 筆術語
+            </MudText>
+            <MudTable Items="_result.Entries" Dense="true" Hover="true" Striped="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>原文</MudTh>
+                    <MudTh>譯文</MudTh>
+                    <MudTh>來源語言</MudTh>
+                    <MudTh>目標語言</MudTh>
+                    <MudTh>區分大小寫</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Source</MudTd>
+                    <MudTd>@context.Target</MudTd>
+                    <MudTd>@context.SourceLang</MudTd>
+                    <MudTd>@context.TargetLang</MudTd>
+                    <MudTd>
+                        @if (context.CaseSensitive)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" />
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Default" Style="opacity:.4;" />
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">關閉</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [Inject] HttpClient Http { get; set; } = null!;
+
+    private GlossaryResult _result = new();
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await Http.GetFromJsonAsync<GlossaryResult>("/api/glossary");
+            _result = result ?? new GlossaryResult();
+        }
+        catch (Exception ex)
+        {
+            _error = $"無法載入術語對照表：{ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void Close() => MudDialog.Close();
+}

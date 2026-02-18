@@ -2,6 +2,7 @@
 @inject ITranslationService TranslationService
 @inject IJSRuntime JS
 @inject AppConfig AppCfg
+@inject IDialogService DialogService
 
 <div class="tg-layout" style="display:flex; flex-direction:column; height:100vh; overflow:hidden;">
 
@@ -15,9 +16,14 @@
             }
             @AppCfg.AppTitle
         </MudText>
-        <MudIconButton Icon="@(IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
-                       title="@(IsDarkMode ? "切換亮色模式" : "切換深色模式")"
-                       OnClick="() => ToggleTheme?.Invoke()" />
+        <div class="d-flex align-center gap-1">
+            <MudIconButton Icon="@Icons.Material.Filled.MoreHoriz"
+                           title="設定與術語對照表"
+                           OnClick="OpenGlossary" />
+            <MudIconButton Icon="@(IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                           title="@(IsDarkMode ? "切換亮色模式" : "切換深色模式")"
+                           OnClick="() => ToggleTheme?.Invoke()" />
+        </div>
     </div>
 
     @* ── 對話區（可捲動，填滿中間） ── *@
@@ -139,6 +145,12 @@
     }
 
     private void HandleCancel() => _streamCts?.Cancel();
+
+    private Task OpenGlossary()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        return DialogService.ShowAsync<GlossaryViewer>("術語對照表", options);
+    }
 
     private void ShowToast(string msg, Severity severity = Severity.Info)
     {

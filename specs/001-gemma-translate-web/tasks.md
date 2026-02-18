@@ -211,13 +211,13 @@
 - [X] T086 在 backend/src/config.py 實作術語對照表配置載入：從 config.yaml 讀取 glossary.enabled 和 glossary.entries，若未設定此區塊則跳過
 - [X] T087 在 backend/src/routes/translate.py 實作術語對照表應用：翻譯前檢查 glossary.enabled，若為 true 則根據語言對自動替換原文中的術語
 - [X] T088 [P] 實作 backend/tests/unit/test_glossary.py：測試術語替換邏輯（大小寫敏感、多項匹配、未設定時忽略）
-- [ ] T089 [P] (Optional - 前端顯示功能) 實作 backend/src/routes/glossary.py：GET /api/glossary 端點，回傳當前啟用的術語對照表
-- [ ] T090 [P] (Optional - 前端顯示功能) 實作 frontend/Components/GlossaryViewer.razor：顯示當前術語對照表內容的唯讀元件
+- [X] T089 [P] (Optional - 前端顯示功能) 實作 backend/src/routes/glossary.py：GET /api/glossary 端點，回傳當前啟用的術語對照表
+- [X] T090 [P] (Optional - 前端顯示功能) 實作 frontend/Components/GlossaryViewer.razor：顯示當前術語對照表內容的唯讀元件
 - [ ] T091 [P] 實作 frontend bUnit 測試：測試 TranslationInput 元件驗證邏輯（TDD）
 - [ ] T092 [P] 實作 frontend bUnit 測試：測試 ChatBubble 元件布局與樣式（TDD）
 - [ ] T093 [P] 實作 frontend bUnit 測試：測試 LanguageSelector 元件選擇邏輯（TDD）
 - [ ] T094 [P] 實作 frontend bUnit 測試：測試 ToastNotification 元件自動消失行為（TDD）
-- [ ] T095 [P] (Optional - 前端顯示功能) 實作 frontend bUnit 測試：測試 GlossaryViewer 元件顯示邏輯（TDD）
+- [X] T095 [P] (Optional - 前端顯示功能) 實作 frontend bUnit 測試：測試 GlossaryViewer 元件顯示邏輯（TDD）
 
 ---
 
@@ -242,7 +242,7 @@
 - [ ] T082 [P] 在 Index.razor 實作響應式佈局測試（桌面、平板、手機）
 - [ ] T083 執行端到端測試：依序驗證 SC-001 至 SC-009 所有成功標準
 - [X] T084 [SKIP] ~~效能測試：使用 4B 模型測試 500 字元文字翻譯，驗證 20 秒內回傳第一個 token~~（初期忽略效能測試，先確保功能完整性）
-- [ ] T085 [P] 建立專案部署檢核表：模型下載、config.yaml 配置、Docker Compose 啟動、健康檢查驗證
+- [X] T085 [P] 建立專案部署檢核表：模型下載、config.yaml 配置、Docker Compose 啟動、健康檢查驗證
 
 ---
 
