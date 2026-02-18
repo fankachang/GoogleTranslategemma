@@ -17,7 +17,22 @@ speckit 實作任務說明
       - Event: { id: string, task_id: string, type: string, payload: object, timestamp: datetime }
     - 儲存選項：支援 JSON 檔案儲存與 SQLite（視需求切換）
     - 資料驗證：使用簡單 schema 驗證（例如 JSON Schema 或自訂驗證函式）
-  - 撰寫核心函式與模組
+  - 撰寫核心函式與模組（已完成）
+    - 檔案結構建議：
+      - src/
+        - models.py (或 models.ts)：Project/Task/Event 類別與序列化/驗證
+        - storage.py：抽象儲存介面（JSONFileStorage / SQLiteStorage 實作）
+        - core.py：核心邏輯（建立/更新/查詢 project/task，事件記錄）
+        - cli.py / api.py：CLI 或簡易 HTTP 封裝（選用）
+    - 核心函式範例接口：
+      - create_project(name: str, description: str) -> Project
+      - get_project(project_id: str) -> Project | None
+      - create_task(project_id: str, title: str, assignee: Optional[str]=None) -> Task
+      - update_task_status(task_id: str, status: str) -> Task
+      - list_tasks(project_id: str, status: Optional[str]=None) -> List[Task]
+      - record_event(task_id: str, type: str, payload: dict) -> Event
+    - 錯誤處理與驗證：在核心函式入口使用 schema 驗證，回傳明確錯誤類型（ValueError / ValidationError）以利測試
+    - 範例實作要點：保持純函式（pure functions）與可注入 storage 以便測試替換 mock
   - 加入單元測試
   - 撰寫使用範例與 README 範例段落
 
