@@ -3,7 +3,7 @@ from fastapi import status as http_status
 from backend.src.schemas.translation import TranslationRequest, TranslationResponse
 from backend.src.language_detect import detect_language
 
-router = APIRouter(prefix="/api")
+router = APIRouter()
 
 
 @router.post("/translate", response_model=TranslationResponse)
