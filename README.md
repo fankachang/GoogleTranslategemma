@@ -102,7 +102,39 @@ dotnet restore
 dotnet run
 ```
 
-### 4. 訪問服務
+### 4. 前端外觀設定
+
+前端可透過 `frontend/wwwroot/appsettings.json` 自訂顯示設定：
+
+```json
+{
+  "BackendUrl": "http://localhost:8000",
+  "AppTitle": "TranslateGemma",
+  "AppLogoUrl": ""
+}
+```
+
+| 欄位 | 說明 | 預設值 |
+|------|------|--------|
+| `BackendUrl` | 後端 API 位址 | `http://localhost:8000` |
+| `AppTitle` | 頁面標題及左上角顯示名稱 | `TranslateGemma` |
+| `AppLogoUrl` | 左上角 Logo 圖片路徑（相對於 `wwwroot`，例如 `/images/logo.png`）；**空白則不顯示圖示** | `""` |
+
+**Logo 使用範例：**
+
+1. 將圖片放至 `frontend/wwwroot/images/logo.png`
+2. 在 `appsettings.json` 中設定：
+
+```json
+{
+  "AppTitle": "我的翻譯服務",
+  "AppLogoUrl": "/images/logo.png"
+}
+```
+
+> **佈景主題**：預設使用暗色模式，可在頁面右上角點擊圖示切換亮色 / 暗色，偏好設定會儲存在瀏覽器 `localStorage`。
+
+### 5. 訪問服務
 
 - **前端介面**：http://localhost:5000
 - **後端 API 文件**：http://localhost:8000/docs
