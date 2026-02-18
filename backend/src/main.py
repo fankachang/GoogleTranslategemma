@@ -6,8 +6,9 @@ from .model import TranslateGemmaModel
 from .routes.health import router as health_router
 from .routes.translate import router as translate_router
 
-app = FastAPI()
+app = FastAPI(title="TranslateGemma")
 config = load_config()
+app.state.config = config
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,5 +32,6 @@ def startup_event():
     app.state.device = model_cfg.get("device")
 
 
+# mount routers
 app.include_router(health_router)
-app.include_router(translate_router)
+app.include_router(translate_router, prefix="/api")
