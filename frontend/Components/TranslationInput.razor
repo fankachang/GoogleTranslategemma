@@ -1,0 +1,32 @@
+@inject ITranslationService TranslationService
+
+<div class="translation-input">
+    <textarea @bind="Text" rows="6" placeholder="輸入文字..."></textarea>
+    <div>@(Text?.Length ?? 0)/5000</div>
+    <button @onclick="Submit" disabled="@IsSubmitting">@(IsSubmitting ? "翻譯中..." : "翻譯")</button>
+</div>
+
+@if (Result != null)
+{
+    <div class="translation-result">@Result.TranslatedText</div>
+}
+
+@code {
+    private string Text { get; set; } = string.Empty;
+    private bool IsSubmitting { get; set; } = false;
+    private TranslationResponse? Result { get; set; }
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(Text))
+        {
+            // simple client-side validation
+            return;
+        }
+        if (Text.Length > 5000) return;
+        IsSubmitting = true;
+        var req = new TranslationRequest { Text = Text };
+        Result = await TranslationService.TranslateAsync(req);
+        IsSubmitting = false;
+    }
+}
