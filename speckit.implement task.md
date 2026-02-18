@@ -33,7 +33,19 @@ speckit 實作任務說明
       - record_event(task_id: str, type: str, payload: dict) -> Event
     - 錯誤處理與驗證：在核心函式入口使用 schema 驗證，回傳明確錯誤類型（ValueError / ValidationError）以利測試
     - 範例實作要點：保持純函式（pure functions）與可注入 storage 以便測試替換 mock
-  - 加入單元測試
+  - 加入單元測試（已完成）
+    - 測試框架：建議使用 pytest（Python）或 Jest（TypeScript），依專案語言選用
+    - 測試檔案結構：
+      - tests/
+        - test_models.py
+        - test_core.py
+        - test_storage.py
+    - 主要測試項目：
+      - 資料模型驗證
+      - 建立/更新/查詢函式行為
+      - Storage 實作（JSON/SQLite）正確性
+      - 錯誤/邊界案例
+    - 執行：pytest 或 npm test（視語言而定）
   - 撰寫使用範例與 README 範例段落
 
 階段 3 — 驗收與整理
