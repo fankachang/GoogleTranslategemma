@@ -47,7 +47,9 @@ namespace TranslateGemma.Services
             TranslationRequest req,
             [EnumeratorCancellation] CancellationToken ct = default)
         {
-            HttpResponseMessage resp;
+            HttpResponseMessage? resp = null;
+            string? initError = null;
+
             try
             {
                 resp = await _http.PostAsJsonAsync("/api/translate", new
@@ -60,13 +62,18 @@ namespace TranslateGemma.Services
             }
             catch (Exception ex)
             {
-                yield return new StreamToken("", true, Error: ex.Message);
+                initError = ex.Message;
+            }
+
+            if (initError != null)
+            {
+                yield return new StreamToken("", true, Error: initError);
                 yield break;
             }
 
-            if (!resp.IsSuccessStatusCode)
+            if (resp == null || !resp.IsSuccessStatusCode)
             {
-                yield return new StreamToken("", true, Error: $"HTTP {resp.StatusCode}");
+                yield return new StreamToken("", true, Error: resp == null ? "無回應" : $"HTTP {resp.StatusCode}");
                 yield break;
             }
 
