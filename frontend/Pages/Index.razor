@@ -17,9 +17,12 @@
             @AppCfg.AppTitle
         </MudText>
         <div class="d-flex align-center gap-1">
-            <MudIconButton Icon="@Icons.Material.Filled.MoreHoriz"
-                           title="設定與術語對照表"
-                           OnClick="OpenGlossary" />
+            <MudBadge Content="@_customGlossary.Count" Color="Color.Primary"
+                      Overlap="true" Visible="@(_customGlossary.Count > 0)">
+                <MudIconButton Icon="@Icons.Material.Filled.MoreHoriz"
+                               title="設定與術語對照表"
+                               OnClick="OpenGlossary" />
+            </MudBadge>
             <MudIconButton Icon="@(IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
                            title="@(IsDarkMode ? "切換亮色模式" : "切換深色模式")"
                            OnClick="() => ToggleTheme?.Invoke()" />
@@ -77,6 +80,7 @@
     [CascadingParameter(Name = "ToggleTheme")] public Action? ToggleTheme { get; set; }
 
     private List<TranslationHistory> _history = new();
+    private List<GlossaryEntry> _customGlossary = new();
     private bool _isSubmitting;
     private System.Threading.CancellationTokenSource? _streamCts;
 
@@ -104,7 +108,14 @@
         await ScrollToBottom();
 
         _streamCts = new System.Threading.CancellationTokenSource();
-        var req = new TranslationRequest { Text = text, SourceLang = null, TargetLang = targetLang, Stream = true };
+        var req = new TranslationRequest
+        {
+            Text = text,
+            SourceLang = null,
+            TargetLang = targetLang,
+            Stream = true,
+            Glossary = _customGlossary.Count > 0 ? _customGlossary.ToList() : null,
+        };
         string accumulated = string.Empty;
         string finalSource = string.Empty;
         bool hasError = false;
@@ -146,10 +157,17 @@
 
     private void HandleCancel() => _streamCts?.Cancel();
 
-    private Task OpenGlossary()
+    private async Task OpenGlossary()
     {
+        var parameters = new DialogParameters<GlossaryViewer>
+        {
+            { x => x.CustomEntries, _customGlossary.ToList() },
+        };
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
-        return DialogService.ShowAsync<GlossaryViewer>("術語對照表", options);
+        var dialog = await DialogService.ShowAsync<GlossaryViewer>("術語對照表", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: List<GlossaryEntry> updated })
+            _customGlossary = updated;
     }
 
     private void ShowToast(string msg, Severity severity = Severity.Info)

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace TranslateGemma.Models
@@ -11,5 +12,7 @@ namespace TranslateGemma.Models
         public string? SourceLang { get; set; }
         public string? TargetLang { get; set; }
         public bool Stream { get; set; } = false;
+
+        public List<GlossaryEntry>? Glossary { get; set; }
     }
 }

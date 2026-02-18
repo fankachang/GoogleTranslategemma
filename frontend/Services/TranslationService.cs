@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
@@ -30,6 +31,14 @@ namespace TranslateGemma.Services
                     source_lang = req.SourceLang,
                     target_lang = req.TargetLang,
                     stream = false,
+                    glossary = req.Glossary?.Select(e => new
+                    {
+                        source = e.Source,
+                        target = e.Target,
+                        source_lang = string.IsNullOrEmpty(e.SourceLang) ? null : e.SourceLang,
+                        target_lang = string.IsNullOrEmpty(e.TargetLang) ? null : e.TargetLang,
+                        case_sensitive = e.CaseSensitive,
+                    }).ToList(),
                 }, ct);
 
                 if (!resp.IsSuccessStatusCode)
@@ -58,6 +67,14 @@ namespace TranslateGemma.Services
                     source_lang = req.SourceLang,
                     target_lang = req.TargetLang,
                     stream = true,
+                    glossary = req.Glossary?.Select(e => new
+                    {
+                        source = e.Source,
+                        target = e.Target,
+                        source_lang = string.IsNullOrEmpty(e.SourceLang) ? null : e.SourceLang,
+                        target_lang = string.IsNullOrEmpty(e.TargetLang) ? null : e.TargetLang,
+                        case_sensitive = e.CaseSensitive,
+                    }).ToList(),
                 }, ct);
             }
             catch (Exception ex)

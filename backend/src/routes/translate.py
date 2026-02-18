@@ -22,25 +22,58 @@ SUPPORTED_LANGS = {"zh-TW", "en"}
 _fallback_config = load_config()
 
 
-def _apply_glossary(text: str, source_lang: str, target_lang: str, glossary_cfg: dict) -> str:
-    """翻譯前：把術語對照表的原文替換為特殊標記，翻譯後再還原。
-    此函式用於「翻譯前標記」步驟。實際替換在 translate 後由 _restore_glossary 執行。
+def _apply_glossary(text: str, source_lang: str, target_lang: str, entries: list) -> str:
+    """套用術語對照表：將輸出文字中匹配的原文強制替換為指定譯文。
+    entries 可包含 dict（來自 config）或 GlossaryEntry pydantic 物件（來自請求）。
+    source_lang / target_lang 為空時視為「匹配任意語言對」。
     """
-    if not glossary_cfg.get("enabled"):
-        return text
-    entries = glossary_cfg.get("entries", [])
     for entry in entries:
-        if entry.get("source_lang") != source_lang or entry.get("target_lang") != target_lang:
+        if isinstance(entry, dict):
+            src = entry.get("source", "")
+            tgt = entry.get("target", "")
+            entry_src_lang = entry.get("source_lang") or None
+            entry_tgt_lang = entry.get("target_lang") or None
+            cs = entry.get("case_sensitive", False)
+        else:
+            src = entry.source
+            tgt = entry.target
+            entry_src_lang = entry.source_lang or None
+            entry_tgt_lang = entry.target_lang or None
+            cs = entry.case_sensitive
+
+        if entry_src_lang and entry_src_lang != source_lang:
             continue
-        pattern = re.escape(entry["source"])
-        flags = 0 if entry.get("case_sensitive") else re.IGNORECASE
-        text = re.sub(pattern, entry["target"], text, flags=flags)
+        if entry_tgt_lang and entry_tgt_lang != target_lang:
+            continue
+        if not src:
+            continue
+
+        pattern = re.escape(src)
+        flags = 0 if cs else re.IGNORECASE
+        text = re.sub(pattern, tgt, text, flags=flags)
     return text
 
 
-def _apply_glossary_to_output(translated: str, source_lang: str, target_lang: str, glossary_cfg: dict) -> str:
-    """翻譯後：強制將輸出中出現的術語來源詞替換為指定目標詞。"""
-    return _apply_glossary(translated, source_lang, target_lang, glossary_cfg)
+def _build_glossary_entries(config_glossary: dict, request_glossary) -> list:
+    """合併請求端術語（優先）與 config 術語，相同原文以請求端為準。"""
+    custom = list(request_glossary) if request_glossary else []
+    config_enabled = config_glossary.get("enabled", False)
+    config_entries = config_glossary.get("entries", []) if config_enabled else []
+
+    if not custom:
+        return config_entries
+    if not config_entries:
+        return custom
+
+    custom_sources = {
+        (e.source if hasattr(e, "source") else e.get("source", "")).lower()
+        for e in custom
+    }
+    merged = custom[:]
+    for cfg in config_entries:
+        if cfg.get("source", "").lower() not in custom_sources:
+            merged.append(cfg)
+    return merged
 
 
 def _resolve_langs(request: TranslationRequest, text: str):
@@ -81,6 +114,7 @@ def translate_endpoint(request: TranslationRequest, req: Request):
     source, target, detected_flag = _resolve_langs(request, text)
 
     glossary_cfg = getattr(req.app.state, "glossary", {"enabled": False, "entries": []})
+    glossary_entries = _build_glossary_entries(glossary_cfg, request.glossary)
     model = getattr(req.app.state, "model", None)
     app_config = getattr(req.app.state, "config", _fallback_config)
     timeout_sec = app_config.get("translation", {}).get("timeout", 120)
@@ -88,14 +122,14 @@ def translate_endpoint(request: TranslationRequest, req: Request):
 
     if request.stream:
         return StreamingResponse(
-            _stream_generator(text, source, target, detected_flag, model, glossary_cfg, model_name),
+            _stream_generator(text, source, target, detected_flag, model, glossary_entries, model_name),
             media_type="text/event-stream",
         )
 
     # --- 非串流 JSON 回應 ---
     try:
         loop = asyncio.new_event_loop()
-        translated = _do_translate_sync(text, source, target, model, glossary_cfg, timeout_sec)
+        translated = _do_translate_sync(text, source, target, model, glossary_entries, timeout_sec)
     except TimeoutError:
         raise HTTPException(status_code=http_status.HTTP_504_GATEWAY_TIMEOUT, detail="翻譯逾時（超過120秒）")
     except Exception as e:
@@ -111,24 +145,24 @@ def translate_endpoint(request: TranslationRequest, req: Request):
     )
 
 
-def _do_translate_sync(text: str, source: str, target: str, model, glossary_cfg: dict, timeout_sec: int) -> str:
+def _do_translate_sync(text: str, source: str, target: str, model, glossary_entries: list, timeout_sec: int) -> str:
     """同步執行翻譯，套用術語表。"""
     if model is not None:
         translated = model.translate(text, source_lang=source, target_lang=target)
     else:
         translated = f"[TRANSLATED ({source}→{target})]: {text}"
-    return _apply_glossary_to_output(translated, source, target, glossary_cfg)
+    return _apply_glossary(translated, source, target, glossary_entries)
 
 
 async def _stream_generator(
     text: str, source: str, target: str, detected_flag: bool,
-    model, glossary_cfg: dict, model_name: str
+    model, glossary_entries: list, model_name: str
 ) -> AsyncGenerator[str, None]:
     """SSE 串流生成器：每個 token 送出一個 data 事件，最後送出 done=true。"""
     try:
         if model is not None:
             for token in model.translate_stream(text, source_lang=source, target_lang=target):
-                token = _apply_glossary_to_output(token, source, target, glossary_cfg)
+                token = _apply_glossary(token, source, target, glossary_entries)
                 payload = json.dumps({"token": token, "done": False}, ensure_ascii=False)
                 yield f"data: {payload}\n\n"
                 await asyncio.sleep(0)  # yield to event loop
