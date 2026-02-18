@@ -1,6 +1,238 @@
 @page "/"
+@inject ITranslationService TranslationService
+@inject LanguageService LanguageService
+@inject IJSRuntime JS
 
-<h3>TranslateGemma</h3>
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
 
-<TranslationInput />
+    @* ── 標題 ── *@
+    <MudText Typo="Typo.h5" GutterBottom="true">
+        <MudIcon Icon="@Icons.Material.Filled.Translate" Class="mr-2" />
+        TranslateGemma
+    </MudText>
+
+    @* ── 語言選擇列 ── *@
+    <MudGrid Class="mb-3" Spacing="2">
+        <MudItem xs="5">
+            <LanguageSelector Label="來源語言"
+                              Value="@SourceLang"
+                              ValueChanged="@((v) => SourceLang = v)"
+                              Languages="@_languages"
+                              ShowAuto="true" />
+        </MudItem>
+        <MudItem xs="2" Class="d-flex align-center justify-center">
+            <MudIconButton Icon="@Icons.Material.Filled.SwapHoriz"
+                           OnClick="SwapLanguages"
+                           Disabled="@(SourceLang == null || TargetLang == null)"
+                           Title="交換語言" />
+        </MudItem>
+        <MudItem xs="5">
+            <LanguageSelector Label="目標語言"
+                              Value="@TargetLang"
+                              ValueChanged="@((v) => TargetLang = v)"
+                              Languages="@_languages"
+                              ShowAuto="false" />
+        </MudItem>
+    </MudGrid>
+
+    @* ── 對話歷史區 ── *@
+    @if (_history.Count == 0)
+    {
+        <MudPaper Elevation="0" Class="pa-6 mb-4 text-center"
+                  Style="background:#FAFAFA; border-radius:12px; border:1px dashed #E0E0E0;">
+            <MudIcon Icon="@Icons.Material.Filled.ChatBubbleOutline" Size="Size.Large" Color="Color.Secondary" />
+            <MudText Typo="Typo.body1" Class="mt-2" Color="Color.Secondary">
+                輸入文字後點擊「翻譯」，這裡會顯示翻譯結果
+            </MudText>
+        </MudPaper>
+    }
+    else
+    {
+        <div id="chat-area" class="mb-4" style="max-height:55vh; overflow-y:auto; padding:4px 2px;">
+            @foreach (var item in _history)
+            {
+                @* 原文泡泡（右） *@
+                <ChatBubble Text="@item.OriginalText"
+                            IsUser="true"
+                            Timestamp="@item.Timestamp"
+                            LangLabel="@item.SourceLang" />
+                @* 譯文泡泡（左） *@
+                <ChatBubble Text="@(item.IsError ? (item.ErrorMessage ?? "翻譯失敗") : item.TranslatedText)"
+                            IsUser="false"
+                            IsError="@item.IsError"
+                            Timestamp="@item.Timestamp"
+                            LangLabel="@(item.IsError ? null : item.TargetLang)" />
+            }
+            @* 串流進行中：顯示累積文字 *@
+            @if (_isStreaming && !string.IsNullOrEmpty(_streamingText))
+            {
+                <ChatBubble Text="@_streamingText"
+                            IsUser="false"
+                            Timestamp="@DateTime.Now"
+                            LangLabel="@_streamingTargetLang" />
+            }
+        </div>
+    }
+
+    @* ── 輸入框 ── *@
+    <TranslationInput SourceLang="@SourceLang"
+                      TargetLang="@TargetLang"
+                      IsSubmitting="@(_isSubmitting || _isStreaming)"
+                      OnSubmit="HandleSubmit"
+                      OnCancel="HandleCancel" />
+
+    @* ── Toast 通知 ── *@
+    <ToastNotification Message="@_toastMessage"
+                       Severity="@_toastSeverity"
+                       Visible="@_toastVisible"
+                       VisibleChanged="@((v) => _toastVisible = v)" />
+
+</MudContainer>
+
+@code {
+    private List<Language> _languages = new();
+    private List<TranslationHistory> _history = new();
+
+    private string? SourceLang { get; set; } = null;  // null = 自動偵測
+    private string? TargetLang { get; set; } = "zh-TW";
+
+    private bool _isSubmitting;
+    private bool _isStreaming;
+    private string _streamingText = string.Empty;
+    private string? _streamingTargetLang;
+    private System.Threading.CancellationTokenSource? _streamCts;
+
+    // Toast
+    private bool _toastVisible;
+    private string _toastMessage = string.Empty;
+    private Severity _toastSeverity = Severity.Info;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _languages = await LanguageService.GetLanguagesAsync();
+        if (_languages.Count > 0 && TargetLang == null)
+            TargetLang = _languages[0].Code;
+    }
+
+    private void SwapLanguages()
+    {
+        if (SourceLang == null || TargetLang == null) return;
+        (SourceLang, TargetLang) = (TargetLang, SourceLang);
+    }
+
+    private async Task HandleSubmit((string Text, string? SourceLang, string? TargetLang) args)
+    {
+        var (text, src, tgt) = args;
+
+        // 相同語言對檢查
+        if (src != null && tgt != null && src == tgt)
+        {
+            ShowToast("來源語言與目標語言不能相同", Severity.Warning);
+            return;
+        }
+
+        _isStreaming = true;
+        _streamingText = string.Empty;
+        _streamingTargetLang = tgt;
+        _streamCts = new System.Threading.CancellationTokenSource();
+        StateHasChanged();
+        await ScrollToBottom();
+
+        var req = new TranslationRequest { Text = text, SourceLang = src, TargetLang = tgt, Stream = true };
+        string finalTranslation = string.Empty;
+        string? finalSource = src;
+        string? finalTarget = tgt;
+        bool finalDetected = false;
+        bool hasError = false;
+        string? errorMsg = null;
+
+        try
+        {
+            await foreach (var token in TranslationService.TranslateStreamAsync(req, _streamCts.Token))
+            {
+                if (token.Error != null)
+                {
+                    hasError = true;
+                    errorMsg = token.Error;
+                    break;
+                }
+                if (!token.Done)
+                {
+                    _streamingText += token.Token;
+                    StateHasChanged();
+                    await ScrollToBottom();
+                }
+                else
+                {
+                    finalTranslation = _streamingText;
+                    finalSource = token.SourceLang ?? src ?? "en";
+                    finalTarget = token.TargetLang ?? tgt ?? "zh-TW";
+                    finalDetected = token.Detected;
+                }
+            }
+        }
+        catch (System.OperationCanceledException)
+        {
+            // 使用者取消
+            if (!string.IsNullOrEmpty(_streamingText))
+            {
+                finalTranslation = _streamingText + " [取消]";
+                hasError = true;
+                errorMsg = "翻譯已取消";
+            }
+        }
+        catch (Exception ex)
+        {
+            hasError = true;
+            errorMsg = $"連線錯誤：{ex.Message}";
+        }
+        finally
+        {
+            _isStreaming = false;
+            _streamingText = string.Empty;
+        }
+
+        // 加入歷史記錄（最多 50 筆 FIFO）
+        var entry = new TranslationHistory
+        {
+            OriginalText = text,
+            TranslatedText = hasError ? string.Empty : finalTranslation,
+            SourceLang = finalSource ?? "en",
+            TargetLang = finalTarget ?? "zh-TW",
+            Detected = finalDetected,
+            IsError = hasError,
+            ErrorMessage = errorMsg,
+        };
+        _history.Add(entry);
+        if (_history.Count > 50)
+            _history.RemoveAt(0);
+
+        if (hasError && errorMsg != null)
+            ShowToast(errorMsg, Severity.Error);
+
+        StateHasChanged();
+        await ScrollToBottom();
+    }
+
+    private void HandleCancel()
+    {
+        _streamCts?.Cancel();
+    }
+
+    private void ShowToast(string msg, Severity severity = Severity.Info)
+    {
+        _toastMessage = msg;
+        _toastSeverity = severity;
+        _toastVisible = true;
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("scrollToBottom", "chat-area");
+        }
+        catch { }
+    }
+}
 

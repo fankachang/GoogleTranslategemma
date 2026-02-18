@@ -1,0 +1,28 @@
+@namespace TranslateGemma.Components
+
+<MudSelect T="string"
+           Value="@Value"
+           ValueChanged="@OnValueChanged"
+           Label="@Label"
+           Variant="Variant.Outlined"
+           Dense="true"
+           AnchorOrigin="Origin.BottomLeft">
+    @if (ShowAuto)
+    {
+        <MudSelectItem T="string" Value="@((string?)null)">自動偵測</MudSelectItem>
+    }
+    @foreach (var lang in Languages)
+    {
+        <MudSelectItem T="string" Value="@lang.Code">@lang.NativeName (@lang.Code)</MudSelectItem>
+    }
+</MudSelect>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "語言";
+    [Parameter] public bool ShowAuto { get; set; } = false;
+    [Parameter] public List<Language> Languages { get; set; } = new();
+
+    private Task OnValueChanged(string? val) => ValueChanged.InvokeAsync(val);
+}

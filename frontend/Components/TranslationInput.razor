@@ -1,32 +1,60 @@
-@inject ITranslationService TranslationService
+@namespace TranslateGemma.Components
 
-<div class="translation-input">
-    <textarea @bind="Text" rows="6" placeholder="輸入文字..."></textarea>
-    <div>@(Text?.Length ?? 0)/5000</div>
-    <button @onclick="Submit" disabled="@IsSubmitting">@(IsSubmitting ? "翻譯中..." : "翻譯")</button>
-</div>
+<MudPaper Elevation="2" Class="pa-4" Style="border-radius:12px;">
+    <MudTextField @bind-Value="Text"
+                  Lines="6"
+                  Variant="Variant.Outlined"
+                  Placeholder="輸入要翻譯的文字..."
+                  MaxLength="5000"
+                  Immediate="true"
+                  Disabled="@IsSubmitting"
+                  Style="font-size:14px; line-height:1.5;"
+                  AutoGrow="false" />
 
-@if (Result != null)
-{
-    <div class="translation-result">@Result.TranslatedText</div>
-}
+    <div class="d-flex justify-space-between align-center mt-2">
+        <MudText Typo="Typo.caption" Color="@(Text?.Length >= 5000 ? Color.Error : Color.Default)">
+            @(Text?.Length ?? 0) / 5000
+        </MudText>
+        <div class="d-flex gap-2">
+            @if (IsSubmitting)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Warning"
+                           Size="Size.Small" OnClick="Cancel">取消</MudButton>
+            }
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="Submit"
+                       Disabled="@(IsSubmitting || string.IsNullOrWhiteSpace(Text) || Text?.Length > 5000)"
+                       StartIcon="@(IsSubmitting ? null : Icons.Material.Filled.Translate)">
+                @if (IsSubmitting)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>翻譯中...</span>
+                }
+                else
+                {
+                    <span>翻譯</span>
+                }
+            </MudButton>
+        </div>
+    </div>
+</MudPaper>
 
 @code {
+    [Parameter] public string? SourceLang { get; set; }
+    [Parameter] public string? TargetLang { get; set; }
+    [Parameter] public bool IsSubmitting { get; set; }
+    [Parameter] public EventCallback<(string Text, string? SourceLang, string? TargetLang)> OnSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
     private string Text { get; set; } = string.Empty;
-    private bool IsSubmitting { get; set; } = false;
-    private TranslationResponse? Result { get; set; }
 
     private async Task Submit()
     {
-        if (string.IsNullOrWhiteSpace(Text))
-        {
-            // simple client-side validation
-            return;
-        }
-        if (Text.Length > 5000) return;
-        IsSubmitting = true;
-        var req = new TranslationRequest { Text = Text };
-        Result = await TranslationService.TranslateAsync(req);
-        IsSubmitting = false;
+        if (string.IsNullOrWhiteSpace(Text) || Text.Length > 5000) return;
+        await OnSubmit.InvokeAsync((Text, SourceLang, TargetLang));
     }
+
+    private Task Cancel() => OnCancel.InvokeAsync();
 }
+
