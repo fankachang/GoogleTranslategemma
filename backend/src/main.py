@@ -32,3 +32,4 @@ def startup_event():
 
 
 app.include_router(health_router)
+app.include_router(translate_router)
