@@ -4,6 +4,7 @@ from .config import load_config
 from .model import TranslateGemmaModel
 
 from .routes.health import router as health_router
+from .routes.translate import router as translate_router
 
 app = FastAPI()
 config = load_config()
