@@ -29,11 +29,10 @@ ENV/
 # Jupyter
 .ipynb_checkpoints/
 
-# Model binaries and large artifacts
-models/**/model-*.safetensors
-models/**/model.safetensors.index.json
-models/**/model-*.ckpt
-models/**/model-*.pt
+# Model binaries and large artifacts — 忽略專案根目錄的 models/（小寫）
+/models/
+!/frontend/Models/
+!/frontend/Models/**
 
 # Tokenizers / caches
 tokenizer.model
