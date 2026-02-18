@@ -1,0 +1,32 @@
+# ── 第一階段：dotnet build ─────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS builder
+
+WORKDIR /src
+
+# 複製 csproj 並還原依賴（利用 layer cache）
+COPY frontend.csproj ./
+RUN dotnet restore
+
+# 複製完整原始碼並發行
+COPY . ./
+RUN dotnet publish -c Release -o /publish
+
+# ── 第二階段：靜態檔案服務（nginx） ───────────────────────────────────────────
+FROM nginx:alpine
+
+# 複製 Blazor WASM 發行產物
+COPY --from=builder /publish/wwwroot /usr/share/nginx/html
+
+# nginx 配置：支援 SPA (Single Page Application) 路由
+RUN printf 'server {\n\
+    listen 80;\n\
+    location / {\n\
+        root /usr/share/nginx/html;\n\
+        try_files $uri $uri/ /index.html;\n\
+    }\n\
+}\n' > /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:80/ || exit 1

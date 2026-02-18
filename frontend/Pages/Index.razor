@@ -1,0 +1,186 @@
+@page "/"
+@inject ITranslationService TranslationService
+@inject IJSRuntime JS
+@inject AppConfig AppCfg
+@inject IDialogService DialogService
+
+<div class="tg-layout" style="display:flex; flex-direction:column; height:100vh; overflow:hidden;">
+
+    @* ── 標題列 ── *@
+    <div class="d-flex align-center justify-space-between px-4 pt-3 pb-2" style="flex-shrink:0;">
+        <MudText Typo="Typo.h6" Style="font-weight:600;">
+            @if (!string.IsNullOrWhiteSpace(AppCfg.AppLogoUrl))
+            {
+                <img src="@AppCfg.AppLogoUrl" alt="logo"
+                     style="height:24px; vertical-align:middle; margin-right:6px;" />
+            }
+            @AppCfg.AppTitle
+        </MudText>
+        <div class="d-flex align-center gap-1">
+            <MudBadge Content="@_customGlossary.Count" Color="Color.Primary"
+                      Overlap="true" Visible="@(_customGlossary.Count > 0)">
+                <MudIconButton Icon="@Icons.Material.Filled.MoreHoriz"
+                               title="設定與術語對照表"
+                               OnClick="OpenGlossary" />
+            </MudBadge>
+            <MudIconButton Icon="@(IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                           title="@(IsDarkMode ? "切換亮色模式" : "切換深色模式")"
+                           OnClick="() => ToggleTheme?.Invoke()" />
+        </div>
+    </div>
+
+    @* ── 對話區（可捲動，填滿中間） ── *@
+    <div id="chat-area" style="flex:1; overflow-y:auto; padding:8px 16px;">
+        @if (_history.Count == 0)
+        {
+            <div style="height:100%; display:flex; align-items:center; justify-content:center;">
+                <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-disabled);">
+                    輸入文字後點擊「翻譯」，這裡會顯示翻譯結果
+                </MudText>
+            </div>
+        }
+        else
+        {
+            @foreach (var item in _history)
+            {
+                @* 原文泡泡（右） *@
+                <ChatBubble Text="@item.OriginalText"
+                            IsUser="true"
+                            Timestamp="@item.Timestamp" />
+                @* 譯文泡泡（左） *@
+                <ChatBubble Text="@(item.IsError ? (item.ErrorMessage ?? "翻譯失敗") : item.TranslatedText)"
+                            IsUser="false"
+                            IsError="@item.IsError"
+                            IsPending="@item.IsPending"
+                            Timestamp="@item.Timestamp"
+                            LangLabel="@(item.IsError || item.IsPending ? null : item.TargetLang)" />
+            }
+        }
+    </div>
+
+    @* ── 輸入框（固定底部） ── *@
+    <div style="flex-shrink:0; display:flex; justify-content:center; padding:12px 16px 20px;">
+        <div style="width:100%; max-width:720px;">
+            <TranslationInput IsSubmitting="@_isSubmitting"
+                              OnSubmit="HandleSubmit"
+                              OnCancel="HandleCancel" />
+        </div>
+    </div>
+
+    @* ── Toast 通知 ── *@
+    <ToastNotification Message="@_toastMessage"
+                       Severity="@_toastSeverity"
+                       Visible="@_toastVisible"
+                       VisibleChanged="@((v) => _toastVisible = v)" />
+
+</div>
+
+@code {
+    [CascadingParameter(Name = "IsDarkMode")] public bool IsDarkMode { get; set; }
+    [CascadingParameter(Name = "ToggleTheme")] public Action? ToggleTheme { get; set; }
+
+    private List<TranslationHistory> _history = new();
+    private List<GlossaryEntry> _customGlossary = new();
+    private bool _isSubmitting;
+    private System.Threading.CancellationTokenSource? _streamCts;
+
+    private bool _toastVisible;
+    private string _toastMessage = string.Empty;
+    private Severity _toastSeverity = Severity.Info;
+
+    private static string DetectTargetLang(string text) =>
+        text.Any(c => c >= 0x4E00 && c <= 0x9FFF) ? "en" : "zh-TW";
+
+    private async Task HandleSubmit(string text)
+    {
+        var targetLang = DetectTargetLang(text);
+        var entry = new TranslationHistory
+        {
+            OriginalText = text,
+            TargetLang = targetLang,
+            IsPending = true,
+        };
+        _history.Add(entry);
+        if (_history.Count > 50) _history.RemoveAt(0);
+
+        _isSubmitting = true;
+        StateHasChanged();
+        await ScrollToBottom();
+
+        _streamCts = new System.Threading.CancellationTokenSource();
+        var req = new TranslationRequest
+        {
+            Text = text,
+            SourceLang = null,
+            TargetLang = targetLang,
+            Stream = true,
+            Glossary = _customGlossary.Count > 0 ? _customGlossary.ToList() : null,
+        };
+        string accumulated = string.Empty;
+        string finalSource = string.Empty;
+        bool hasError = false;
+        string? errorMsg = null;
+
+        try
+        {
+            await foreach (var token in TranslationService.TranslateStreamAsync(req, _streamCts.Token))
+            {
+                if (token.Error != null) { hasError = true; errorMsg = token.Error; break; }
+                if (!token.Done) { accumulated += token.Token; }
+                else { finalSource = token.SourceLang ?? string.Empty; }
+            }
+        }
+        catch (System.OperationCanceledException)
+        {
+            hasError = true;
+            errorMsg = "翻譯已取消";
+        }
+        catch (Exception ex)
+        {
+            hasError = true;
+            errorMsg = $"連線錯誤：{ex.Message}";
+        }
+
+        entry.IsPending = false;
+        entry.TranslatedText = hasError ? string.Empty : accumulated;
+        entry.SourceLang = finalSource;
+        entry.IsError = hasError;
+        entry.ErrorMessage = errorMsg;
+        _isSubmitting = false;
+
+        if (hasError && errorMsg != null)
+            ShowToast(errorMsg, Severity.Error);
+
+        StateHasChanged();
+        await ScrollToBottom();
+    }
+
+    private void HandleCancel() => _streamCts?.Cancel();
+
+    private async Task OpenGlossary()
+    {
+        var parameters = new DialogParameters<GlossaryViewer>
+        {
+            { x => x.CustomEntries, _customGlossary.ToList() },
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<GlossaryViewer>("術語對照表", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: List<GlossaryEntry> updated })
+            _customGlossary = updated;
+    }
+
+    private void ShowToast(string msg, Severity severity = Severity.Info)
+    {
+        _toastMessage = msg;
+        _toastSeverity = severity;
+        _toastVisible = true;
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try { await JS.InvokeVoidAsync("scrollToBottom", "chat-area"); }
+        catch { }
+    }
+}
+

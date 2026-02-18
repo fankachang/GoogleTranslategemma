@@ -29,11 +29,10 @@ ENV/
 # Jupyter
 .ipynb_checkpoints/
 
-# Model binaries and large artifacts
-models/**/model-*.safetensors
-models/**/model.safetensors.index.json
-models/**/model-*.ckpt
-models/**/model-*.pt
+# Model binaries and large artifacts — 忽略專案根目錄的 models/（小寫）
+/models/
+!/frontend/Models/
+!/frontend/Models/**
 
 # Tokenizers / caches
 tokenizer.model
@@ -49,7 +48,9 @@ tmp/
 temp/# ========================================
 # 模型檔案（太大，不納入版本控制）
 # ========================================
-models/
+/models/
+!/frontend/Models/
+!/frontend/Models/**
 
 # ========================================
 # 敏感資料與金鑰
@@ -101,6 +102,13 @@ htmlcov/
 # mypy
 .mypy_cache/
 .dmypy.json
+
+# Project-specific ignores
+config.yaml
+backend/__pycache__/
+frontend/bin/
+frontend/obj/
+
 
 # ========================================
 # .NET

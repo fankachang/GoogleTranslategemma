@@ -1,0 +1,199 @@
+@namespace TranslateGemma.Components
+@using System.Linq
+@using System.Net.Http.Json
+@using TranslateGemma.Models
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Class="mr-2" Style="vertical-align:sub;" />
+            術語對照表
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+
+        @* ── 自訂術語（可編輯，優先於伺服器設定） ── *@
+        <div class="d-flex align-center mb-2">
+            <MudText Typo="Typo.subtitle2">自訂術語</MudText>
+            <MudText Typo="Typo.caption" Class="ml-2" Style="opacity:.6;">（本次工作階段有效，優先於伺服器設定）</MudText>
+        </div>
+
+        @if (_customEntries.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="mb-2" Style="opacity:.5;">尚未新增自訂術語</MudText>
+        }
+        else
+        {
+            @for (int i = 0; i < _customEntries.Count; i++)
+            {
+                var entry = _customEntries[i];
+                var idx = i;
+                <div class="d-flex align-center gap-2 mb-2">
+                    <MudTextField @bind-Value="entry.Source"
+                                  Placeholder="原文"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  Style="flex:1;" />
+                    <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Style="opacity:.45; flex-shrink:0;" />
+                    <MudTextField @bind-Value="entry.Target"
+                                  Placeholder="譯文"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  Style="flex:1;" />
+                    <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                                   Size="Size.Small" Color="Color.Error"
+                                   OnClick="() => RemoveEntry(idx)" />
+                </div>
+            }
+        }
+
+        @* 新增列 *@
+        <div class="d-flex align-center gap-2 mt-1">
+            <MudTextField @bind-Value="_newSource"
+                          Placeholder="原文"
+                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Style="flex:1;"
+                          OnKeyDown="OnNewEntryKeyDown" />
+            <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Style="opacity:.45; flex-shrink:0;" />
+            <MudTextField @bind-Value="_newTarget"
+                          Placeholder="譯文"
+                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Style="flex:1;"
+                          OnKeyDown="OnNewEntryKeyDown" />
+            <MudIconButton Icon="@Icons.Material.Filled.AddCircleOutline"
+                           Size="Size.Small" Color="Color.Primary"
+                           Disabled="@(string.IsNullOrWhiteSpace(_newSource) || string.IsNullOrWhiteSpace(_newTarget))"
+                           OnClick="AddEntry" />
+        </div>
+
+        <MudDivider Class="my-4" />
+
+        @* ── 伺服器設定（唯讀） ── *@
+        <div class="d-flex align-center mb-2">
+            <MudText Typo="Typo.subtitle2">伺服器設定</MudText>
+            <MudText Typo="Typo.caption" Class="ml-2" Style="opacity:.6;">（唯讀，由 config.yaml 管理）</MudText>
+        </div>
+
+        @if (_loading)
+        {
+            <div class="d-flex justify-center pa-3">
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+            </div>
+        }
+        else if (_error != null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+        }
+        else if (!_serverResult.Enabled)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">
+                未啟用。請在 <code>config.yaml</code> 設定 <code>glossary.enabled: true</code> 並重啟後端。
+            </MudAlert>
+        }
+        else if (_serverResult.Entries.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Style="opacity:.5;">已啟用，但目前無任何項目。</MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.caption" Class="mb-2" Style="opacity:.6;">共 @_serverResult.Entries.Count 筆</MudText>
+            <MudTable Items="_serverResult.Entries" Dense="true" Hover="true" Striped="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>原文</MudTh>
+                    <MudTh>譯文</MudTh>
+                    <MudTh>來源語言</MudTh>
+                    <MudTh>目標語言</MudTh>
+                    <MudTh>區分大小寫</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Source</MudTd>
+                    <MudTd>@context.Target</MudTd>
+                    <MudTd>@context.SourceLang</MudTd>
+                    <MudTd>@context.TargetLang</MudTd>
+                    <MudTd>
+                        @if (context.CaseSensitive)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" />
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" Style="opacity:.3;" />
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">取消</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Confirm">確認</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [Inject] HttpClient Http { get; set; } = null!;
+
+    [Parameter] public List<GlossaryEntry> CustomEntries { get; set; } = new();
+
+    private GlossaryResult _serverResult = new();
+    private bool _loading = true;
+    private string? _error;
+
+    private List<GlossaryEntry> _customEntries = new();
+    private string _newSource = string.Empty;
+    private string _newTarget = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 複製傳入的自訂術語（避免直接修改父元件狀態）
+        _customEntries = CustomEntries.Select(e => new GlossaryEntry
+        {
+            Source = e.Source,
+            Target = e.Target,
+            SourceLang = e.SourceLang,
+            TargetLang = e.TargetLang,
+            CaseSensitive = e.CaseSensitive,
+        }).ToList();
+
+        try
+        {
+            var result = await Http.GetFromJsonAsync<GlossaryResult>("/api/glossary");
+            _serverResult = result ?? new GlossaryResult();
+        }
+        catch (Exception ex)
+        {
+            _error = $"無法載入伺服器術語對照表：{ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void AddEntry()
+    {
+        if (string.IsNullOrWhiteSpace(_newSource) || string.IsNullOrWhiteSpace(_newTarget))
+            return;
+        _customEntries.Add(new GlossaryEntry
+        {
+            Source = _newSource.Trim(),
+            Target = _newTarget.Trim(),
+        });
+        _newSource = string.Empty;
+        _newTarget = string.Empty;
+    }
+
+    private void OnNewEntryKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") AddEntry();
+    }
+
+    private void RemoveEntry(int idx)
+    {
+        if (idx >= 0 && idx < _customEntries.Count)
+            _customEntries.RemoveAt(idx);
+    }
+
+    private void Cancel() => MudDialog.Close();
+    private void Confirm() => MudDialog.Close(DialogResult.Ok(_customEntries));
+}

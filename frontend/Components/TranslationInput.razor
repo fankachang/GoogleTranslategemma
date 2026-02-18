@@ -1,0 +1,57 @@
+@namespace TranslateGemma.Components
+
+<MudPaper Elevation="2" Class="pa-4" Style="border-radius:12px;">
+    <MudTextField @bind-Value="Text"
+                  Lines="3"
+                  Variant="Variant.Outlined"
+                  Placeholder="輸入要翻譯的文字..."
+                  MaxLength="5000"
+                  Immediate="true"
+                  Disabled="@IsSubmitting"
+                  Style="font-size:14px; line-height:1.5;"
+                  AutoGrow="false" />
+
+    <div class="d-flex justify-space-between align-center mt-2">
+        <MudText Typo="Typo.caption" Color="@(Text?.Length >= 5000 ? Color.Error : Color.Default)">
+            @(Text?.Length ?? 0) / 5000
+        </MudText>
+        <div class="d-flex gap-2">
+            @if (IsSubmitting)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Warning"
+                           Size="Size.Small" OnClick="Cancel">取消</MudButton>
+            }
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="Submit"
+                       Disabled="@(IsSubmitting || string.IsNullOrWhiteSpace(Text) || Text?.Length > 5000)">
+                @if (IsSubmitting)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>翻譯中...</span>
+                }
+                else
+                {
+                    <span>翻譯</span>
+                }
+            </MudButton>
+        </div>
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter] public bool IsSubmitting { get; set; }
+    [Parameter] public EventCallback<string> OnSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private string Text { get; set; } = string.Empty;
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(Text) || Text.Length > 5000) return;
+        await OnSubmit.InvokeAsync(Text);
+    }
+
+    private Task Cancel() => OnCancel.InvokeAsync();
+}
+

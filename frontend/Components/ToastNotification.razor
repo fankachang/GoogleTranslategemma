@@ -1,0 +1,57 @@
+@namespace TranslateGemma.Components
+
+@if (Visible)
+{
+    <div class="toast-container">
+        <MudAlert Severity="@Severity"
+                  Dense="true"
+                  ShowCloseIcon="true"
+                  CloseIconClicked="Dismiss"
+                  Style="box-shadow:0 2px 8px rgba(0,0,0,.15); min-width:240px; max-width:400px;">
+            @Message
+        </MudAlert>
+    </div>
+}
+
+<style>
+    .toast-container {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 9999;
+        animation: slideIn 0.2s ease-out;
+    }
+    @@keyframes slideIn {
+        from { opacity:0; transform:translateY(12px); }
+        to   { opacity:1; transform:translateY(0); }
+    }
+</style>
+
+@code {
+    [Parameter] public string Message { get; set; } = string.Empty;
+    [Parameter] public Severity Severity { get; set; } = Severity.Info;
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+
+    private System.Threading.CancellationTokenSource? _cts;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Visible && !string.IsNullOrEmpty(Message))
+        {
+            _cts?.Cancel();
+            _cts = new System.Threading.CancellationTokenSource();
+            try
+            {
+                await Task.Delay(5000, _cts.Token);
+                await Dismiss();
+            }
+            catch (TaskCanceledException) { }
+        }
+    }
+
+    private async Task Dismiss()
+    {
+        await VisibleChanged.InvokeAsync(false);
+    }
+}
