@@ -488,10 +488,13 @@ glossary:
 |--------|------------|---------|---------|
 | `validation_error` | 422 | 「文字過長，請限制在 5000 字元以內」 | Toast |
 | `empty_input` | 422 | 「請輸入文字」 | Toast |
-| `timeout` | 504 | 「翻譯逾時（已等待 {elapsed} 秒），請稍後重試」 | 對話泡泡 |
-| `model_not_loaded` | 503 | 「模型初始化中，請稍候片刻」 | 對話泡泡 |
+| `timeout` | 504 | 「翻譯逾時（已等待 {elapsed} 秒），請稍後重試」 | 對話泡泡 + 重試按鈕 |
+| `model_not_loaded` | 503 | 「模型初始化中，預計需要 30-60 秒，請稍候...」 | 對話泡泡 + 自動輪詢 |
+| `model_ready` | 200 | 「模型已就緒，可以開始翻譯」 | Toast（成功提示） |
 | `unsupported_language` | 400 | 「不支援的語言對：{source_lang} → {target_lang}」 | Toast |
 | `connection_error` | 503 | 「無法連線至翻譯服務，請檢查網路連線」 | 對話泡泡 |
+| `clipboard_denied` | N/A | 「無法存取剪貼簿，請手動選取文字複製」 | Toast（前端處理） |
+| `invalid_response` | 502 | 「無法解析伺服器回應，請聯絡管理員」 | 對話泡泡 |
 | `internal_error` | 500 | 「系統錯誤，請稍後重試」 | 對話泡泡 |
 
 **錯誤訊息格式規範**:
