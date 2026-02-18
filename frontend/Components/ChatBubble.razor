@@ -6,11 +6,18 @@
     <MudPaper Elevation="1"
               Style="@BubbleStyle"
               Class="chat-bubble pa-3">
-        @if (IsError)
+        @if (IsPending)
         {
-            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Error" Size="Size.Small" Class="mr-1" />
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="ma-1" />
         }
-        <span class="bubble-text" style="white-space:pre-wrap; font-size:14px; line-height:1.5;">@Text</span>
+        else
+        {
+            @if (IsError)
+            {
+                <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Error" Size="Size.Small" Class="mr-1" />
+            }
+            <span class="bubble-text" style="white-space:pre-wrap; font-size:14px; line-height:1.5;">@Text</span>
+        }
 
         <div class="bubble-footer d-flex align-center justify-space-between mt-1">
             <MudText Typo="Typo.caption" Style="opacity:.6; font-size:12px;">
@@ -19,7 +26,7 @@
                 { <span class="ml-1">· @LangLabel</span> }
             </MudText>
 
-            @if (!IsUser && !IsError && !string.IsNullOrEmpty(Text))
+            @if (!IsUser && !IsError && !IsPending && !string.IsNullOrEmpty(Text))
             {
                 <div class="copy-btn-wrapper" style="position:relative;">
                     <MudIconButton Icon="@(Copied ? Icons.Material.Filled.Check : Icons.Material.Filled.ContentCopy)"
@@ -53,17 +60,19 @@
     [Parameter] public string Text { get; set; } = string.Empty;
     [Parameter] public bool IsUser { get; set; }
     [Parameter] public bool IsError { get; set; }
+    [Parameter] public bool IsPending { get; set; }
     [Parameter] public DateTime Timestamp { get; set; } = DateTime.Now;
     [Parameter] public string? LangLabel { get; set; }
+    [CascadingParameter(Name = "IsDarkMode")] public bool IsDarkMode { get; set; }
 
     private bool Copied { get; set; }
     private System.Threading.CancellationTokenSource? _copyCts;
 
     private string BubbleStyle => IsError
-        ? "background:#FFEBEE; border-radius:12px;"
+        ? (IsDarkMode ? "background:#4A1515; border-radius:12px;" : "background:#FFEBEE; border-radius:12px;")
         : IsUser
-            ? "background:#E3F2FD; border-radius:12px;"
-            : "background:#F5F5F5; border-radius:12px;";
+            ? (IsDarkMode ? "background:#1A3A5C; border-radius:12px;" : "background:#E3F2FD; border-radius:12px;")
+            : (IsDarkMode ? "background:#2D2D2D; border-radius:12px;" : "background:#F5F5F5; border-radius:12px;");
 
     private async Task CopyText()
     {

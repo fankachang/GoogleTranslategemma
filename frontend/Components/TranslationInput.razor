@@ -2,7 +2,7 @@
 
 <MudPaper Elevation="2" Class="pa-4" Style="border-radius:12px;">
     <MudTextField @bind-Value="Text"
-                  Lines="6"
+                  Lines="3"
                   Variant="Variant.Outlined"
                   Placeholder="輸入要翻譯的文字..."
                   MaxLength="5000"
@@ -24,8 +24,7 @@
             <MudButton Variant="Variant.Filled"
                        Color="Color.Primary"
                        OnClick="Submit"
-                       Disabled="@(IsSubmitting || string.IsNullOrWhiteSpace(Text) || Text?.Length > 5000)"
-                       StartIcon="@(IsSubmitting ? null : Icons.Material.Filled.Translate)">
+                       Disabled="@(IsSubmitting || string.IsNullOrWhiteSpace(Text) || Text?.Length > 5000)">
                 @if (IsSubmitting)
                 {
                     <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
@@ -41,10 +40,8 @@
 </MudPaper>
 
 @code {
-    [Parameter] public string? SourceLang { get; set; }
-    [Parameter] public string? TargetLang { get; set; }
     [Parameter] public bool IsSubmitting { get; set; }
-    [Parameter] public EventCallback<(string Text, string? SourceLang, string? TargetLang)> OnSubmit { get; set; }
+    [Parameter] public EventCallback<string> OnSubmit { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
 
     private string Text { get; set; } = string.Empty;
@@ -52,7 +49,7 @@
     private async Task Submit()
     {
         if (string.IsNullOrWhiteSpace(Text) || Text.Length > 5000) return;
-        await OnSubmit.InvokeAsync((Text, SourceLang, TargetLang));
+        await OnSubmit.InvokeAsync(Text);
     }
 
     private Task Cancel() => OnCancel.InvokeAsync();

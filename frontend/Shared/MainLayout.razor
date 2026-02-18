@@ -1,8 +1,34 @@
 @inherits LayoutComponentBase
+@inject IJSRuntime JS
 
-<MudThemeProvider />
+<MudThemeProvider IsDarkMode="@_isDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-@Body
+<CascadingValue Value="@_isDarkMode" Name="IsDarkMode">
+    <CascadingValue Value="@((Action)ToggleTheme)" Name="ToggleTheme">
+        @Body
+    </CascadingValue>
+</CascadingValue>
+
+@code {
+    private bool _isDarkMode;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var stored = await JS.InvokeAsync<string?>("localStorage.getItem", "theme");
+            _isDarkMode = stored == "dark";
+            StateHasChanged();
+        }
+    }
+
+    private async void ToggleTheme()
+    {
+        _isDarkMode = !_isDarkMode;
+        await JS.InvokeVoidAsync("localStorage.setItem", "theme", _isDarkMode ? "dark" : "light");
+        StateHasChanged();
+    }
+}

@@ -1,45 +1,25 @@
 @page "/"
 @inject ITranslationService TranslationService
-@inject LanguageService LanguageService
 @inject IJSRuntime JS
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
 
-    @* ── 標題 ── *@
-    <MudText Typo="Typo.h5" GutterBottom="true">
-        <MudIcon Icon="@Icons.Material.Filled.Translate" Class="mr-2" />
-        TranslateGemma
-    </MudText>
-
-    @* ── 語言選擇列 ── *@
-    <MudGrid Class="mb-3" Spacing="2">
-        <MudItem xs="5">
-            <LanguageSelector Label="來源語言"
-                              Value="@SourceLang"
-                              ValueChanged="@((v) => SourceLang = v)"
-                              Languages="@_languages"
-                              ShowAuto="true" />
-        </MudItem>
-        <MudItem xs="2" Class="d-flex align-center justify-center">
-            <MudIconButton Icon="@Icons.Material.Filled.SwapHoriz"
-                           OnClick="SwapLanguages"
-                           Disabled="@(SourceLang == null || TargetLang == null)"
-                           title="交換語言" />
-        </MudItem>
-        <MudItem xs="5">
-            <LanguageSelector Label="目標語言"
-                              Value="@TargetLang"
-                              ValueChanged="@((v) => TargetLang = v)"
-                              Languages="@_languages"
-                              ShowAuto="false" />
-        </MudItem>
-    </MudGrid>
+    @* ── 標題列 ── *@
+    <div class="d-flex align-center justify-space-between mb-3">
+        <MudText Typo="Typo.h5">
+            <MudIcon Icon="@Icons.Material.Filled.Translate" Class="mr-2" />
+            TranslateGemma
+        </MudText>
+        <MudIconButton Icon="@(IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                       title="@(IsDarkMode ? "切換亮色模式" : "切換深色模式")"
+                       OnClick="() => ToggleTheme?.Invoke()" />
+    </div>
 
     @* ── 對話歷史區 ── *@
     @if (_history.Count == 0)
     {
         <MudPaper Elevation="0" Class="pa-6 mb-4 text-center"
-                  Style="background:#FAFAFA; border-radius:12px; border:1px dashed #E0E0E0;">
+                  Style="background:var(--mud-palette-background-grey); border-radius:12px; border:1px dashed var(--mud-palette-divider);">
             <MudIcon Icon="@Icons.Material.Filled.ChatBubbleOutline" Size="Size.Large" Color="Color.Secondary" />
             <MudText Typo="Typo.body1" Class="mt-2" Color="Color.Secondary">
                 輸入文字後點擊「翻譯」，這裡會顯示翻譯結果
@@ -54,30 +34,20 @@
                 @* 原文泡泡（右） *@
                 <ChatBubble Text="@item.OriginalText"
                             IsUser="true"
-                            Timestamp="@item.Timestamp"
-                            LangLabel="@item.SourceLang" />
+                            Timestamp="@item.Timestamp" />
                 @* 譯文泡泡（左） *@
                 <ChatBubble Text="@(item.IsError ? (item.ErrorMessage ?? "翻譯失敗") : item.TranslatedText)"
                             IsUser="false"
                             IsError="@item.IsError"
+                            IsPending="@item.IsPending"
                             Timestamp="@item.Timestamp"
-                            LangLabel="@(item.IsError ? null : item.TargetLang)" />
-            }
-            @* 串流進行中：顯示累積文字 *@
-            @if (_isStreaming && !string.IsNullOrEmpty(_streamingText))
-            {
-                <ChatBubble Text="@_streamingText"
-                            IsUser="false"
-                            Timestamp="@DateTime.Now"
-                            LangLabel="@_streamingTargetLang" />
+                            LangLabel="@(item.IsError || item.IsPending ? null : item.TargetLang)" />
             }
         </div>
     }
 
     @* ── 輸入框 ── *@
-    <TranslationInput SourceLang="@SourceLang"
-                      TargetLang="@TargetLang"
-                      IsSubmitting="@(_isSubmitting || _isStreaming)"
+    <TranslationInput IsSubmitting="@_isSubmitting"
                       OnSubmit="HandleSubmit"
                       OnCancel="HandleCancel" />
 
@@ -90,59 +60,40 @@
 </MudContainer>
 
 @code {
-    private List<Language> _languages = new();
+    [CascadingParameter(Name = "IsDarkMode")] public bool IsDarkMode { get; set; }
+    [CascadingParameter(Name = "ToggleTheme")] public Action? ToggleTheme { get; set; }
+
     private List<TranslationHistory> _history = new();
-
-    private string? SourceLang { get; set; } = null;  // null = 自動偵測
-    private string? TargetLang { get; set; } = "zh-TW";
-
     private bool _isSubmitting;
-    private bool _isStreaming;
-    private string _streamingText = string.Empty;
-    private string? _streamingTargetLang;
     private System.Threading.CancellationTokenSource? _streamCts;
 
-    // Toast
     private bool _toastVisible;
     private string _toastMessage = string.Empty;
     private Severity _toastSeverity = Severity.Info;
 
-    protected override async Task OnInitializedAsync()
-    {
-        _languages = await LanguageService.GetLanguagesAsync();
-        if (_languages.Count > 0 && TargetLang == null)
-            TargetLang = _languages[0].Code;
-    }
+    private static string DetectTargetLang(string text) =>
+        text.Any(c => c >= 0x4E00 && c <= 0x9FFF) ? "en" : "zh-TW";
 
-    private void SwapLanguages()
+    private async Task HandleSubmit(string text)
     {
-        if (SourceLang == null || TargetLang == null) return;
-        (SourceLang, TargetLang) = (TargetLang, SourceLang);
-    }
-
-    private async Task HandleSubmit((string Text, string? SourceLang, string? TargetLang) args)
-    {
-        var (text, src, tgt) = args;
-
-        // 相同語言對檢查
-        if (src != null && tgt != null && src == tgt)
+        var targetLang = DetectTargetLang(text);
+        var entry = new TranslationHistory
         {
-            ShowToast("來源語言與目標語言不能相同", Severity.Warning);
-            return;
-        }
+            OriginalText = text,
+            TargetLang = targetLang,
+            IsPending = true,
+        };
+        _history.Add(entry);
+        if (_history.Count > 50) _history.RemoveAt(0);
 
-        _isStreaming = true;
-        _streamingText = string.Empty;
-        _streamingTargetLang = tgt;
-        _streamCts = new System.Threading.CancellationTokenSource();
+        _isSubmitting = true;
         StateHasChanged();
         await ScrollToBottom();
 
-        var req = new TranslationRequest { Text = text, SourceLang = src, TargetLang = tgt, Stream = true };
-        string finalTranslation = string.Empty;
-        string? finalSource = src;
-        string? finalTarget = tgt;
-        bool finalDetected = false;
+        _streamCts = new System.Threading.CancellationTokenSource();
+        var req = new TranslationRequest { Text = text, SourceLang = null, TargetLang = targetLang, Stream = true };
+        string accumulated = string.Empty;
+        string finalSource = string.Empty;
         bool hasError = false;
         string? errorMsg = null;
 
@@ -150,62 +101,28 @@
         {
             await foreach (var token in TranslationService.TranslateStreamAsync(req, _streamCts.Token))
             {
-                if (token.Error != null)
-                {
-                    hasError = true;
-                    errorMsg = token.Error;
-                    break;
-                }
-                if (!token.Done)
-                {
-                    _streamingText += token.Token;
-                    StateHasChanged();
-                    await ScrollToBottom();
-                }
-                else
-                {
-                    finalTranslation = _streamingText;
-                    finalSource = token.SourceLang ?? src ?? "en";
-                    finalTarget = token.TargetLang ?? tgt ?? "zh-TW";
-                    finalDetected = token.Detected;
-                }
+                if (token.Error != null) { hasError = true; errorMsg = token.Error; break; }
+                if (!token.Done) { accumulated += token.Token; }
+                else { finalSource = token.SourceLang ?? string.Empty; }
             }
         }
         catch (System.OperationCanceledException)
         {
-            // 使用者取消
-            if (!string.IsNullOrEmpty(_streamingText))
-            {
-                finalTranslation = _streamingText + " [取消]";
-                hasError = true;
-                errorMsg = "翻譯已取消";
-            }
+            hasError = true;
+            errorMsg = "翻譯已取消";
         }
         catch (Exception ex)
         {
             hasError = true;
             errorMsg = $"連線錯誤：{ex.Message}";
         }
-        finally
-        {
-            _isStreaming = false;
-            _streamingText = string.Empty;
-        }
 
-        // 加入歷史記錄（最多 50 筆 FIFO）
-        var entry = new TranslationHistory
-        {
-            OriginalText = text,
-            TranslatedText = hasError ? string.Empty : finalTranslation,
-            SourceLang = finalSource ?? "en",
-            TargetLang = finalTarget ?? "zh-TW",
-            Detected = finalDetected,
-            IsError = hasError,
-            ErrorMessage = errorMsg,
-        };
-        _history.Add(entry);
-        if (_history.Count > 50)
-            _history.RemoveAt(0);
+        entry.IsPending = false;
+        entry.TranslatedText = hasError ? string.Empty : accumulated;
+        entry.SourceLang = finalSource;
+        entry.IsError = hasError;
+        entry.ErrorMessage = errorMsg;
+        _isSubmitting = false;
 
         if (hasError && errorMsg != null)
             ShowToast(errorMsg, Severity.Error);
@@ -214,10 +131,7 @@
         await ScrollToBottom();
     }
 
-    private void HandleCancel()
-    {
-        _streamCts?.Cancel();
-    }
+    private void HandleCancel() => _streamCts?.Cancel();
 
     private void ShowToast(string msg, Severity severity = Severity.Info)
     {
@@ -228,10 +142,7 @@
 
     private async Task ScrollToBottom()
     {
-        try
-        {
-            await JS.InvokeVoidAsync("scrollToBottom", "chat-area");
-        }
+        try { await JS.InvokeVoidAsync("scrollToBottom", "chat-area"); }
         catch { }
     }
 }
