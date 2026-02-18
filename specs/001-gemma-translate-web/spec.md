@@ -158,6 +158,142 @@
 - **SC-008**: 使用者能在翻譯完成後 1 次點擊內完成結果複製動作
 - **SC-009**: 系統能在後端模型未載入或發生錯誤時，向使用者顯示清楚的錯誤訊息而非空白或崩潰
 
+## Non-Functional Requirements *(Phase B)*
+
+### Performance Requirements
+
+- **NFR-001**: 前端首次載入時間：Blazor WASM bundle 載入與啟動應在 3 秒內完成（測量從瀏覽器請求 index.html 到首次渲染完成）
+- **NFR-002**: 前端頁面切換時間：使用者操作（如展開語言選單、點擊複製按鈕）應在 100 毫秒內有視覺回饋
+- **NFR-003**: SSE 串流首 token 延遲：95% 的正常請求（< 500 字元）應在 20 秒內開始回傳第一個 token（對應 SC-004）
+- **NFR-004**: 翻譯記錄渲染效能：當翻譯記錄超過 50 筆時，對話區域應啟用虛擬滾動（Virtual Scrolling）避免效能下降
+
+### Security Requirements
+
+- **NFR-005**: 輸入驗證：前後端必須驗證所有使用者輸入，防止 XSS 注入攻擊
+  - 前端：Blazor 自動轉義 HTML 字元
+  - 後端：Pydantic 驗證資料型別與長度
+- **NFR-006**: API Rate Limiting（可選實作）：建議在生產環境透過 reverse proxy（如 nginx）實作每 IP 限制：
+  - 每分鐘最多 30 次翻譯請求
+  - 超過限制回傳 HTTP 429（Too Many Requests）
+  - **Note**: 本地開發環境可不實作此限制
+- **NFR-007**: HTTPS/TLS 傳輸加密：
+  - **開發環境**: 允許使用 HTTP（localhost 豁免）
+  - **生產環境**: 強烈建議透過 reverse proxy（如 nginx）處理 TLS 終止
+  - 後端服務本身無需實作 HTTPS（由 reverse proxy 負責）
+- **NFR-008**: CORS 政策：
+  - **開發環境**: 允許 `http://localhost:*` 和 `http://127.0.0.1:*`
+  - **生產環境**: 僅允許明確的前端部署網域白名單（透過後端 `config.yaml` 配置）
+  - 範例配置:
+    ```yaml
+    cors:
+      allowed_origins:
+        - "https://translate.example.com"
+        - "https://app.example.com"
+    ```
+- **NFR-009**: 依賴掃描：建議定期執行依賴漏洞掃描：
+  - Python: `pip-audit`
+  - .NET: `dotnet list package --vulnerable`
+
+### Reliability Requirements
+
+- **NFR-010**: SSE 串流重連策略：
+  - 前端使用瀏覽器原生 `EventSource` API（自動具備重連機制）
+  - 自訂重連邏輯（若需要）：
+    - 最多嘗試 3 次重連
+    - 重連間隔：1 秒 → 3 秒 → 9 秒（指數退避）
+    - 3 次失敗後顯示錯誤泡泡「無法連線至翻譯服務」
+- **NFR-011**: 健康檢查輪詢策略：
+  - **初次載入**: 前端開啟時執行一次健康檢查（`GET /api/health`）
+  - **模型未就緒**: 若回傳 `model_loaded: false`，每 5 秒輪詢一次直到 `model_loaded: true`
+  - **模型就緒提示**: 當模型從未就緒變為就緒時，顯示 Toast 成功通知「模型已就緒，可以開始翻譯」
+  - **背景輪詢**: 初次就緒後停止輪詢，僅在收到「模型初始化中」錯誤時重新啟動輪詢
+- **NFR-012**: 請求逾時設定：
+  - 前端 fetch timeout: 130 秒（略長於後端 timeout 以接收完整錯誤訊息）
+  - 後端推論 timeout: 120 秒（對應 FR-016）
+- **NFR-013**: 服務降級策略：
+  - **無降級機制**: 當後端資源不足或模型推論過慢時，直接回傳 HTTP 503（Service Unavailable）錯誤
+  - **使用者操作**: 顯示錯誤泡泡「翻譯服務暫時無法使用，請稍後重試」，使用者可手動重試
+  - **Rationale**: MVP 階段無需複雜的降級邏輯（如請求佇列、模型切換），保持系統簡單
+
+### Observability Requirements
+
+- **NFR-014**: 後端日誌記錄範圍：
+  - **INFO 級別**: 服務啟動、模型載入完成、API 請求摘要（語言對、字元數、處理時間）
+  - **ERROR 級別**: 模型載入失敗、推論逾時、非預期例外
+  - **日誌格式**: 結構化 JSON 格式（便於後續整合 ELK/Loki）
+  - **範例**:
+    ```json
+    {
+      "timestamp": "2026-02-18T10:30:45.123Z",
+      "level": "INFO",
+      "event": "translation_completed",
+      "source_lang": "en",
+      "target_lang": "zh-TW",
+      "char_count": 256,
+      "duration_ms": 3421
+    }
+    ```
+- **NFR-015**: 效能監控指標（建議實作）：
+  - **回應時間**: P50、P95、P99 翻譯時間（從接收請求到完成串流）
+  - **錯誤率**: 每小時 5xx 錯誤數量與比例
+  - **資源使用**: GPU/CPU 使用率、記憶體佔用（透過系統監控工具如 Prometheus）
+  - **Note**: 初期可透過日誌分析實作，未來可整合 Prometheus + Grafana
+- **NFR-016**: 前端錯誤追蹤：
+  - 所有未預期錯誤（如後端回傳格式錯誤、SSE 解析失敗）記錄到瀏覽器 console
+  - 記錄格式:
+    ```js
+    console.error('[TranslateGemma] 錯誤類型: invalid_response', {
+      url: '/api/translate',
+      status: 502,
+      body: '<html>Bad Gateway</html>'
+    });
+    ```
+
+### Accessibility Requirements
+
+- **NFR-017**: 無障礙支援範圍（MVP 階段）：
+  - **不強制要求**: 本階段無需完整符合 WCAG 2.1 AA 標準
+  - **基礎支援**: MudBlazor 元件庫提供預設的無障礙特性（語意化 HTML、基礎 ARIA 標籤）
+  - **未來改進**: Phase 2 可考慮：
+    - 鍵盤導航（Tab 切換輸入框/按鈕、Enter 送出）
+    - 螢幕閱讀器支援（完整 ARIA 標籤）
+    - 色彩對比度符合 WCAG 2.1 AA（4.5:1 for 正常文字）
+
+### Maintainability Requirements
+
+- **NFR-018**: 設定檔參數規範：
+  - 後端 `config.yaml` 必須明確定義所有可調整參數：
+    ```yaml
+    model:
+      name: "Translategemma-4b-it"  # 或 "Translategemma-12b-it"
+      device: "auto"  # auto | cuda | mps | cpu
+      dtype: "float32"  # float32 | float16 | bfloat16 | int8
+      path: "./models/Translategemma-4b-it"
+    
+    translation:
+      timeout: 120  # 秒
+      max_length: 5000  # 字元
+    
+    server:
+      host: "0.0.0.0"
+      port: 8000
+    
+    cors:
+      allowed_origins:
+        - "http://localhost:5000"
+    ```
+  - **資料型別說明**:
+    - `float32`: 預設精度，最高品質（記憶體需求高）
+    - `float16`: 半精度，速度快 2 倍（記憶體減半，品質略降）
+    - `bfloat16`: Brain Float 16，平衡速度與品質（NVIDIA A100/H100 最佳）
+    - `int8`: 8-bit 量化，記憶體最小（品質顯著下降，僅推薦 CPU 環境）
+- **NFR-019**: 備份與還原策略：
+  - **無資料庫**: 本服務無持久化資料，無需資料備份
+  - **配置檔備份**: 建議生產環境定期備份 `config.yaml`（版本控制或自動化腳本）
+  - **模型檔案**: 模型檔案應從 Hugging Face 官方下載，必要時可透過 Git LFS 或對象儲存進行備份
+
+---
+
 ## Clarifications
 
 ### Session 2026-02-17
@@ -167,3 +303,10 @@
 - Q: 串流輸出顆粒度：規格提到「翻譯結果以串流方式逐字逐句顯示」，但沒有明確串流的顆粒度（逐 token / 逐詞 / 逐句）。實際的串流顆粒度應該是什麼？ → A: 逐 token（模型輸出單位，最即時）
 - Q: 對話泡泡布局方向：規格提到「對話泡泡應左右對齊（原文左，譯文右）」，但這與常見的對話介面習慣可能有衝突。實際的視覺布局邏輯應該是什麼？ → A: 使用者輸入（原文）右、系統回應（譯文）左 - 符合現代聊天應用慣例
 - Q: 錯誤訊息的顯示方式與持續時間：規格提到多種錯誤情境（後端未啟動、模型未載入、翻譯逾時、空白輸入等），但沒有說明錯誤訊息應該如何顯示以及何時消失。錯誤訊息的顯示策略應該是什麼？ → A: Toast 通知（3-5 秒自動消失）+ 對話區域錯誤訊息 - 輕量錯誤用 Toast，嚴重錯誤在對話區域顯示保留歷史
+
+### Session 2026-02-18 (Phase B)
+
+- Q: 前端如何呼叫健康檢查 API？是否需要定期輪詢？ → A: 僅在模型未載入時每 5 秒輪詢，首次載入和背景正常運作時不輪詢（避免無謂請求）
+- Q: 是否需要符合 WCAG 2.1 AA 無障礙標準？ → A: MVP 階段不強制要求，使用 MudBlazor 預設無障礙支援即可，Phase 2 再考慮完整無障礙性
+- Q: 是否強制要求 HTTPS？ → A: 僅建議生產環境使用（透過 nginx），本地開發可用 HTTP
+- Q: 當後端過載時是否需要降級策略（如請求佇列）？ → A: 無降級機制，直接回傳 503 錯誤讓使用者手動重試（保持系統簡單）
