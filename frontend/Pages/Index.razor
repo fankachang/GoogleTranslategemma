@@ -2,12 +2,12 @@
 @inject ITranslationService TranslationService
 @inject IJSRuntime JS
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+<div class="tg-layout" style="display:flex; flex-direction:column; height:100vh; overflow:hidden;">
 
     @* ── 標題列 ── *@
-    <div class="d-flex align-center justify-space-between mb-3">
-        <MudText Typo="Typo.h5">
-            <MudIcon Icon="@Icons.Material.Filled.Translate" Class="mr-2" />
+    <div class="d-flex align-center justify-space-between px-4 pt-3 pb-2" style="flex-shrink:0;">
+        <MudText Typo="Typo.h6" Style="font-weight:600;">
+            <MudIcon Icon="@Icons.Material.Filled.Translate" Class="mr-1" Style="vertical-align:sub;" />
             TranslateGemma
         </MudText>
         <MudIconButton Icon="@(IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
@@ -15,20 +15,18 @@
                        OnClick="() => ToggleTheme?.Invoke()" />
     </div>
 
-    @* ── 對話歷史區 ── *@
-    @if (_history.Count == 0)
-    {
-        <MudPaper Elevation="0" Class="pa-6 mb-4 text-center"
-                  Style="background:var(--mud-palette-background-grey); border-radius:12px; border:1px dashed var(--mud-palette-divider);">
-            <MudIcon Icon="@Icons.Material.Filled.ChatBubbleOutline" Size="Size.Large" Color="Color.Secondary" />
-            <MudText Typo="Typo.body1" Class="mt-2" Color="Color.Secondary">
-                輸入文字後點擊「翻譯」，這裡會顯示翻譯結果
-            </MudText>
-        </MudPaper>
-    }
-    else
-    {
-        <div id="chat-area" class="mb-4" style="max-height:55vh; overflow-y:auto; padding:4px 2px;">
+    @* ── 對話區（可捲動，填滿中間） ── *@
+    <div id="chat-area" style="flex:1; overflow-y:auto; padding:8px 16px;">
+        @if (_history.Count == 0)
+        {
+            <div style="height:100%; display:flex; align-items:center; justify-content:center;">
+                <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-disabled);">
+                    輸入文字後點擊「翻譯」，這裡會顯示翻譯結果
+                </MudText>
+            </div>
+        }
+        else
+        {
             @foreach (var item in _history)
             {
                 @* 原文泡泡（右） *@
@@ -43,13 +41,17 @@
                             Timestamp="@item.Timestamp"
                             LangLabel="@(item.IsError || item.IsPending ? null : item.TargetLang)" />
             }
-        </div>
-    }
+        }
+    </div>
 
-    @* ── 輸入框 ── *@
-    <TranslationInput IsSubmitting="@_isSubmitting"
-                      OnSubmit="HandleSubmit"
-                      OnCancel="HandleCancel" />
+    @* ── 輸入框（固定底部） ── *@
+    <div style="flex-shrink:0; display:flex; justify-content:center; padding:12px 16px 20px;">
+        <div style="width:100%; max-width:720px;">
+            <TranslationInput IsSubmitting="@_isSubmitting"
+                              OnSubmit="HandleSubmit"
+                              OnCancel="HandleCancel" />
+        </div>
+    </div>
 
     @* ── Toast 通知 ── *@
     <ToastNotification Message="@_toastMessage"
@@ -57,7 +59,7 @@
                        Visible="@_toastVisible"
                        VisibleChanged="@((v) => _toastVisible = v)" />
 
-</MudContainer>
+</div>
 
 @code {
     [CascadingParameter(Name = "IsDarkMode")] public bool IsDarkMode { get; set; }
