@@ -8,7 +8,11 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// HttpClient 指向後端 API（開發時為 localhost:8000）
+// 從 appsettings.json 讀取設定
+var appConfig = builder.Configuration.Get<AppConfig>() ?? new AppConfig();
+if (string.IsNullOrWhiteSpace(appConfig.AppTitle)) appConfig.AppTitle = "TranslateGemma";
+builder.Services.AddSingleton(appConfig);
+
 var backendUrl = builder.Configuration["BackendUrl"] ?? "http://localhost:8000";
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(backendUrl) });
 
