@@ -87,14 +87,21 @@ class TranslateGemmaModel:
             self.tokenizer = None
             self.model = None
 
-    def _build_prompt(self, text: str, source_lang: str, target_lang: str) -> str:
-        src_name = LANG_NAMES.get(source_lang, source_lang)
-        tgt_name = LANG_NAMES.get(target_lang, target_lang)
-        return (
-            f"Translate the following text from {src_name} to {tgt_name}.\n"
-            f"Text: {text}\n"
-            f"Translation:"
-        )
+    def _build_messages(self, text: str, source_lang: str, target_lang: str) -> list:
+        """使用 TranslateGemma 標準 chat template 格式構建 messages."""
+        return [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "source_lang_code": source_lang,
+                        "target_lang_code": target_lang,
+                        "text": text,
+                    }
+                ],
+            }
+        ]
 
     def translate(self, text: str, source_lang: Optional[str] = None, target_lang: Optional[str] = None) -> str:
         """執行翻譯。模型未載入時回傳 placeholder."""
@@ -104,18 +111,25 @@ class TranslateGemmaModel:
         if not self.model or not self.tokenizer:
             return f"[TRANSLATED ({src}→{tgt})]: {text}"
 
-        prompt = self._build_prompt(text, src, tgt)
+        messages = self._build_messages(text, src, tgt)
         try:
             import torch
-            inputs = self.tokenizer(prompt, return_tensors="pt").to(self._resolved_device)
+            encoding = self.tokenizer.apply_chat_template(
+                messages,
+                return_tensors="pt",
+                add_generation_prompt=True,
+            )
+            # apply_chat_template 可能回傳 BatchEncoding 或 tensor
+            input_ids = (encoding["input_ids"] if hasattr(encoding, "__getitem__") and not isinstance(encoding, torch.Tensor)
+                         else encoding).to(self._resolved_device)
             with torch.no_grad():
                 outputs = self.model.generate(
-                    **inputs,
+                    input_ids,
                     max_new_tokens=self.max_new_tokens,
                     do_sample=False,
                 )
             # 只取生成部分（去掉 prompt tokens）
-            generated = outputs[0][inputs["input_ids"].shape[1]:]
+            generated = outputs[0][input_ids.shape[1]:]
             return self.tokenizer.decode(generated, skip_special_tokens=True).strip()
         except Exception as e:
             logger.error("翻譯推論失敗: %s", e)
@@ -134,16 +148,22 @@ class TranslateGemmaModel:
                 yield char
             return
 
-        prompt = self._build_prompt(text, src, tgt)
+        messages = self._build_messages(text, src, tgt)
         try:
             import torch
             from transformers import TextIteratorStreamer
             from threading import Thread
 
-            inputs = self.tokenizer(prompt, return_tensors="pt").to(self._resolved_device)
+            encoding = self.tokenizer.apply_chat_template(
+                messages,
+                return_tensors="pt",
+                add_generation_prompt=True,
+            )
+            input_ids = (encoding["input_ids"] if hasattr(encoding, "__getitem__") and not isinstance(encoding, torch.Tensor)
+                         else encoding).to(self._resolved_device)
             streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
             gen_kwargs = dict(
-                **inputs,
+                input_ids=input_ids,
                 max_new_tokens=self.max_new_tokens,
                 do_sample=False,
                 streamer=streamer,
