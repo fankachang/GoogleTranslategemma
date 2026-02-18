@@ -18,9 +18,14 @@ def health(request: Request):
     else:
         status = "error"
 
+    resolved_device = None
+    if model is not None:
+        resolved_device = getattr(model, "_resolved_device", None)
+
     return {
         "status": status,
         "model_name": getattr(app.state, "model_name", None),
         "device": getattr(app.state, "device", None),
+        "resolved_device": resolved_device,
         "model_loaded": loaded,
     }
