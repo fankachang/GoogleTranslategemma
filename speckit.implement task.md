@@ -46,7 +46,28 @@ speckit 實作任務說明
       - Storage 實作（JSON/SQLite）正確性
       - 錯誤/邊界案例
     - 執行：pytest 或 npm test（視語言而定）
-  - 撰寫使用範例與 README 範例段落
+  - 撰寫使用範例與 README 範例段落（已完成）
+    - README 範例（Python）：
+
+      ```python
+      from src.core import create_project, create_task, list_tasks, update_task_status
+
+      proj = create_project("範例專案", "示範 speckit 功能")
+      task = create_task(proj.id, "撰寫 specs")
+      tasks = list_tasks(proj.id)
+      update_task_status(task.id, "in_progress")
+      ```
+
+    - README 範例（CLI）：
+
+      ```bash
+      speckit create-project "範例專案" "示範 speckit 功能"
+      speckit create-task <project_id> "撰寫 specs"
+      speckit list-tasks <project_id>
+      speckit update-task-status <task_id> in_progress
+      ```
+
+    - 文件說明：在 README 中包含安裝、快速開始、API 參考與測試指示，並連結到更詳細的模組文件。
 
 階段 3 — 驗收與整理
 - 整理內容、補充註解與文件
