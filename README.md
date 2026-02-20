@@ -305,4 +305,5 @@ Windows PowerShell 亦可一行啟動後端：
 - 首次啟動會載入模型，根據硬體配置可能需要數分鐘
 - 4B 模型約需 8GB VRAM，12B 模型約需 24GB VRAM
 - CPU 模式可運行但速度較慢
-- **容器部署記憶體需求**：safetensors mmap 使用一般虛擬記憶體，需確保 VM / 容器有足夠總記憶體（4B ≈ 8GB、12B ≈ 24GB）。macOS 調整方式：`podman machine set --memory 20480`；Windows 於 Podman 同指令或 `.wslconfig` 調整；Docker Desktop 在 Resources → Memory 設定
+- **容器部署記憶體需求**：safetensors mmap 使用一般虛擬記憶體，需確保 VM / 容器有足夠總記憶體（4B ≈ 8GB、12B ≈ 24GB）。
+- macOS 調整方式：`podman machine set --memory 20480`；Windows 於 Podman 同指令或 `.wslconfig` 調整；Docker Desktop 在 Resources → Memory 設定
