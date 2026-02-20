@@ -1,7 +1,8 @@
 fastapi
 uvicorn[standard]
 transformers>=4.0.0
-# torch 預設安裝 CPU 版；torch CUDA 版需另行安裝，請參閱 quickstart.md 步驟 2.5
+accelerate
+# torch 預設安裝 CPU 版；torch CUDA 版需另行安裝，請參閱 quickstart.md 步驟 3
 torch
 pyyaml
 pytest
