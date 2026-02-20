@@ -86,7 +86,7 @@ model:
 
 容器內使用 NVIDIA GPU 推論需在**主機**安裝 NVIDIA Container Toolkit，讓 Podman / Docker 能將 GPU 裝置傳遞給容器；`config.yaml` 同時需設定 `device: "cuda"`。
 
-> 若無 GPU 或不需要 GPU 加速，可跳過此節，並將 `docker-compose.yaml` 中 backend 服務的 `deploy:` 區塊整段注解掉，改用 `device: "auto"` 即可以 CPU 模式執行。
+> 若無 GPU 或不需要 GPU 加速，可跳過此節，直接執行 `podman-compose up` 即可以 CPU / MPS 模式執行。GPU 設定已獨立至 `docker-compose.gpu.yaml`，僅 Windows NVIDIA 環境才需帶入。
 
 #### Linux 主機
 
@@ -151,50 +151,83 @@ model:
 
 ### 4. 啟動服務
 
-#### 使用 Podman Compose（推薦）
+依環境選擇對應部署方式：
+
+| 環境 | 後端 | 前端 | MPS/GPU |
+|------|------|------|---------|
+| Linux / Windows 正式 | 容器 | 容器 | CUDA（需另帶 GPU override） |
+| macOS Apple Silicon 正式 | **本機執行** | 容器 | ✅ MPS |
+| 本地開發 | 本機（--reload） | dotnet run | ✅ MPS |
+
+---
+
+#### 容器部署（Linux / Windows 正式環境）
+
+> Podman / Docker 在 macOS 透過 Linux VM 執行容器，**Metal / MPS 無法穿透**，macOS 請改用下方「macOS 正式部署」。
 
 ```bash
-podman-compose up
+# 一般環境（CPU）
+podman-compose up -d
+
+# Windows + NVIDIA GPU（帶入 GPU override）
+podman-compose -f docker-compose.yaml -f docker-compose.gpu.yaml up -d
 ```
 
-> **無 GPU 環境**：若主機未安裝 NVIDIA Container Toolkit，請先將 `docker-compose.yaml` 中 backend 服務的 `deploy:` 區塊整段注解，否則 podman-compose 會因找不到 CDI 裝置而報錯。
-
-#### 使用 Docker Compose
+Docker Compose 同理：
 
 ```bash
-docker-compose up
+docker-compose up -d
+docker-compose -f docker-compose.yaml -f docker-compose.gpu.yaml up -d
 ```
+
+> **GPU 直通說明**：GPU 設定已獨立至 `docker-compose.gpu.yaml`，預設不帶入，避免非 NVIDIA 環境因找不到 CDI 裝置而報錯。
+
+---
+
+#### macOS Apple Silicon 正式部署（MPS 加速）
+
+後端需本機執行才能存取 Metal/MPS；前端靜態檔案仍可透過容器以 nginx 服務。
+
+**步驟一：啟動前端容器**
+
+```bash
+cd frontend
+podman build -t translategemma-frontend .
+podman run -d --name translategemma-frontend -p 5000:80 translategemma-frontend
+```
+
+**步驟二：本機啟動後端（正式模式，無 hot-reload）**
+
+```bash
+source .venv/bin/activate
+uvicorn src.main:app --app-dir backend --host 0.0.0.0 --port 8000 --workers 1
+```
+
+> `config.yaml` 設定 `device: "auto"` 即可自動偵測 MPS；若需明確指定請設為 `device: "mps"`。
+
+---
 
 #### 本地開發
 
-**後端：**
-```powershell
-# 1. 建立並啟動虛擬環境（Python 3.13，詳見 quickstart.md 步驟 3）
-py -3.13 -m venv .venv
-.venv\Scripts\Activate.ps1   # Windows PowerShell
-# source .venv/bin/activate  # Linux / macOS
+> 以下啟用 hot-reload，**僅供開發使用**，不建議用於正式服務。
 
-# 2. 安裝依賴
-python -m pip install -r backend/requirements.txt
+**後端（支援程式碼異動自動重啟）：**
 
-# 3. （有 NVIDIA GPU）替換為 CUDA 版 torch（約 2.5 GB）
-python -m pip install torch --force-reinstall --index-url https://download.pytorch.org/whl/cu124
-
-# 4. 啟動後端
-cd backend
-uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
-
-or 
-.venv\Scripts\Activate.ps1; uvicorn src.main:app --app-dir backend --host 0.0.0.0 --port 8000
+```bash
+source .venv/bin/activate
+uvicorn src.main:app --app-dir backend --host 0.0.0.0 --port 8000 --reload
 ```
 
-**前端：**
+**前端（dotnet watch，支援 Hot Reload）：**
+
 ```bash
-cd frontend
-dotnet restore
-dotnet run
-or 
 dotnet run --project frontend/frontend.csproj
+```
+
+Windows PowerShell 亦可一行啟動後端：
+
+```powershell
+.venv\Scripts\Activate.ps1; uvicorn src.main:app --app-dir backend --host 0.0.0.0 --port 8000 --reload
 ```
 
 ### 5. 前端外觀設定

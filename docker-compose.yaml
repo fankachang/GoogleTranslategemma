@@ -14,15 +14,7 @@ services:
       - ./config.yaml:/app/config.yaml:ro
     environment:
       - PYTHONUNBUFFERED=1
-    # NVIDIA GPU 直通（需主機已安裝 nvidia-container-toolkit 並設定 CDI）
-    # 若無 GPU 或未設定 CDI，請移除或注解此段，否則 podman-compose 會報錯
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+    shm_size: '16gb'   # mmap 大型模型需要足夠的共享記憶體
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]

@@ -1,0 +1,13 @@
+# Windows + NVIDIA GPU 覆寫設定
+# 使用方式：docker-compose -f docker-compose.yaml -f docker-compose.gpu.yaml up
+# 需主機已安裝 nvidia-container-toolkit 並設定 CDI
+
+services:
+  backend:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
