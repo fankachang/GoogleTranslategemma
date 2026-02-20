@@ -14,7 +14,7 @@
 
 ### 前置需求
 
-- Python 3.10+
+- Python **3.13**（建議，支援 PyTorch CUDA wheel）；3.10+ 可用但不支援 GPU 推論，請勿使用 3.14
 - .NET 9 SDK
 - Podman 或 Docker（容器部署）
 - （選用）NVIDIA GPU with CUDA 或 Apple Silicon Mac（加速推論）
@@ -72,6 +72,16 @@ model:
   dtype: "auto"        # 自動選擇精度
 ```
 
+> **GPU 使用注意**：`pip install torch` 預設可能只安裝 CPU 版本（可用 `python -c "import torch; print(torch.__version__)"` 確認，若輸出含 `+cpu` 表示 CPU 版）。
+> 需另行安裝 CUDA-enabled 版本：
+> ```bash
+> # CUDA 12.4（適用驅動版本 ≥ 550.x，如 RTX 4060）
+> pip install torch --index-url https://download.pytorch.org/whl/cu124
+> ```
+> 完整安裝指令請至 https://pytorch.org/get-started/locally/ 選擇。
+>
+> **dtype 建議**：8GB GPU（如 RTX 4060）請使用 `dtype: "float16"`；`float32` 會導致 OOM。
+
 ### 3. 啟動服務
 
 #### 使用 Podman Compose（推薦）
@@ -89,10 +99,21 @@ docker-compose up
 #### 本地開發
 
 **後端：**
-```bash
+```powershell
+# 1. 建立並啟動虛擬環境（Python 3.13，詳見 quickstart.md 步驟 3）
+py -3.13 -m venv .venv
+.venv\Scripts\Activate.ps1   # Windows PowerShell
+# source .venv/bin/activate  # Linux / macOS
+
+# 2. 安裝依賴
+python -m pip install -r backend/requirements.txt
+
+# 3. （有 NVIDIA GPU）替換為 CUDA 版 torch（約 2.5 GB）
+python -m pip install torch --force-reinstall --index-url https://download.pytorch.org/whl/cu124
+
+# 4. 啟動後端
 cd backend
-pip install -r requirements.txt
-python main.py
+uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 **前端：**

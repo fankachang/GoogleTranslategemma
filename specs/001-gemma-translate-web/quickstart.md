@@ -7,9 +7,9 @@
 ## 環境需求
 
 ### 後端（FastAPI）
-- **Python**: 3.11+
+- **Python**: **3.13**（建議），3.11+ 可用但不支援 PyTorch CUDA wheel。請勿使用 Python 3.14（PyTorch CUDA wheel 尚未支援）
 - **記憶體**: 4B 模型需 8GB+，12B 模型需 24GB+
-- **GPU** (可選): NVIDIA CUDA 11.8+、Apple MPS（M 系列晶片）、或使用 CPU
+- **GPU** (可選): NVIDIA CUDA 12.4+、Apple MPS（M 系列晶片）、或使用 CPU
 
 ### 前端（Blazor WASM）
 - **.NET SDK**: 10.0+
@@ -83,27 +83,104 @@ server:
 
 ---
 
-### 步驟 3：啟動後端 API
+### 步驟 3：建立虛擬環境並安裝依賴
 
-#### （選項 A）使用虛擬環境
+> **重要：請使用 Python 3.13**，PyTorch 的 CUDA wheel 尚不支援 Python 3.14。
 
-```bash
-# 建立虛擬環境
-python3.11 -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+**1. 確認已安裝 Python 3.13**
 
-# 安裝依賴
-pip install -r backend/requirements.txt
-
-# 啟動 API 伺服器
-cd backend
-uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+```powershell
+# Windows - 列出所有已安裝的 Python 版本
+py -0
+# 應看到 -V:3.13 這一行；若無，請至 https://python.org 下載安裝 Python 3.13
 ```
 
-#### （選項 B）使用系統 Python
+**2. 建立虛擬環境**
+
+```powershell
+# Windows（明確使用 Python 3.13）
+py -3.13 -m venv .venv
+```
 
 ```bash
-pip install -r backend/requirements.txt
+# Linux / macOS
+python3.13 -m venv .venv
+```
+
+**3. 啟動虛擬環境**
+
+```powershell
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+```
+
+```bash
+# Linux / macOS
+source .venv/bin/activate
+```
+
+> ⚠️ **新手注意**：啟動後，終端提示字元前方應出現 `(.venv)`。若未啟動就直接執行 `pip install`，會安裝到系統 Python 而非虛擬環境。
+
+**4. 安裝依賴**
+
+```powershell
+# 使用 .venv 的 python（避免用到系統 pip）
+python -m pip install -r backend/requirements.txt
+```
+
+> ⚠️ `pip install -r ...` 安裝的 `torch` 是 **CPU 版本**（版本號含 `+cpu`），GPU 推論需要額外步驟替換。
+
+**5. 安裝 CUDA-enabled PyTorch（有 NVIDIA GPU 才需要）**
+
+先確認 GPU 驅動版本：
+
+```powershell
+nvidia-smi
+# 查看右上角 "CUDA Version" 欄位（顯示驅動最高支援版本）
+# 例如：驅動支援 13.1，選擇 CUDA 12.4 的 PyTorch 即可（向下相容）
+```
+
+安裝（約 **2.5 GB**，請保持網路穩定並等待完成，中途不要中斷）：
+
+```powershell
+# 以 CUDA 12.4 為例（適用驅動版本 ≥ 550.x）
+# 必須用 --force-reinstall 覆蓋掉上一步安裝的 CPU 版本
+python -m pip install torch --force-reinstall --index-url https://download.pytorch.org/whl/cu124
+```
+
+> **版本號說明**：pytorch.org 的 CUDA wheel 版本號（如 `2.6.0+cu124`）會低於 PyPI 的 CPU 版號（如 `2.10.0`），版本號不同步是正常現象，不代表降版。
+
+完整選項請至 https://pytorch.org/get-started/locally/ 選擇「Stable / Windows / Pip / Python / CUDA 12.x」。
+
+**6. 驗證 CUDA 可用**
+
+```powershell
+python -c "import torch; print('torch:', torch.__version__); print('cuda:', torch.cuda.is_available()); print('device:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'no gpu')"
+```
+
+預期輸出：
+```
+torch: 2.6.0+cu124
+cuda: True
+device: NVIDIA GeForce RTX 4060
+```
+
+若 `cuda: False` 或版本含 `+cpu`，請參閱「常見問題排除 → 問題 6」。
+
+**7. dtype 建議（依 VRAM 選擇）**
+
+| VRAM | 建議 dtype | config.yaml 設定 |
+|------|-----------|------------------|
+| 8GB（如 RTX 4060） | `float16` | `dtype: "float16"` |
+| 16GB+ | `bfloat16` | `dtype: "bfloat16"` |
+| 24GB+（12B 模型） | `bfloat16` | `dtype: "bfloat16"` |
+
+> **注意**：在 8GB GPU 上使用 `float32` 會導致 CUDA Out of Memory（OOM）錯誤，請避免。
+
+**8. 啟動後端 API 伺服器**
+
+```powershell
+# 確保 .venv 已啟動（提示字元前有 (.venv)）
 cd backend
 uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 ```
@@ -317,6 +394,25 @@ server:
 2. 檢查主控台（Console）錯誤訊息
 3. 確認 .NET SDK 版本：`dotnet --version`（需 10.0+）
 4. 清除快取並重新載入：`Ctrl + Shift + R`
+
+---
+
+### 問題 6：cuda: False（torch 安裝了 CPU 版本）
+
+**症狀**：
+```
+cuda: False
+torch: 2.x.x+cpu
+```
+
+**原因與解決方案**：
+
+| 原因 | 解法 |
+|------|------|
+| 未啟動 `.venv` 就執行 `pip install` | 啟動 `.venv`（提示出現 `(.venv)`）再重新安裝 |
+| 先裝了 `requirements.txt`（CPU torch），但未用 `--force-reinstall` 替換 | 重新執行：`python -m pip install torch --force-reinstall --index-url https://download.pytorch.org/whl/cu124` |
+| `.venv` 使用 Python 3.14（無 CUDA wheel） | 確認：`python --version`；若是 3.14，請重建 .venv：`py -3.13 -m venv .venv` |
+| 使用系統 `pip` 而非 `.venv` 的 `python -m pip` | 確保已用 `Activate.ps1` 啟動，或改用 `python -m pip install ...` |
 
 ---
 
