@@ -14,7 +14,11 @@ if (string.IsNullOrWhiteSpace(appConfig.AppTitle)) appConfig.AppTitle = "Transla
 builder.Services.AddSingleton(appConfig);
 
 var backendUrl = builder.Configuration["BackendUrl"] ?? "http://localhost:8000";
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(backendUrl) });
+builder.Services.AddScoped(sp => new HttpClient
+{
+    BaseAddress = new Uri(backendUrl),
+    Timeout = System.Threading.Timeout.InfiniteTimeSpan, // 由 CancellationToken 控制逾時，不依賴 HttpClient 預設 100 秒
+});
 
 // MudBlazor 服務
 builder.Services.AddMudServices();

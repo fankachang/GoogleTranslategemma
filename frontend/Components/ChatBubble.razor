@@ -19,6 +19,8 @@
             <span class="bubble-text" style="white-space:pre-wrap; font-size:14px; line-height:1.5;">@Text</span>
         }
 
+        @if (!IsPending)
+        {
         <div class="bubble-footer d-flex align-center justify-space-between mt-1">
             <MudText Typo="Typo.caption" Style="opacity:.6; font-size:12px;">
                 @Timestamp.ToString("HH:mm:ss")
@@ -45,6 +47,7 @@
                 </div>
             }
         </div>
+        }
     </MudPaper>
 </div>
 

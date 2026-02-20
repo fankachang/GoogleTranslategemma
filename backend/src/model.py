@@ -77,7 +77,7 @@ class TranslateGemmaModel:
             self.tokenizer = AutoTokenizer.from_pretrained(model_path)
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_path,
-                torch_dtype=torch_dtype,
+                dtype=torch_dtype,
                 device_map=self._resolved_device,
             )
             self.model.eval()
@@ -114,6 +114,7 @@ class TranslateGemmaModel:
         messages = self._build_messages(text, src, tgt)
         try:
             import torch
+            torch.cuda.empty_cache()  # 推論前釋放碎片化 VRAM
             encoding = self.tokenizer.apply_chat_template(
                 messages,
                 return_tensors="pt",
@@ -154,6 +155,7 @@ class TranslateGemmaModel:
             from transformers import TextIteratorStreamer
             from threading import Thread
 
+            torch.cuda.empty_cache()  # 推論前釋放碎片化 VRAM
             encoding = self.tokenizer.apply_chat_template(
                 messages,
                 return_tensors="pt",

@@ -43,6 +43,7 @@
         {
             @foreach (var item in _history)
             {
+                <div style="max-width:720px; margin:0 auto; width:100%;">
                 @* 原文泡泡（右） *@
                 <ChatBubble Text="@item.OriginalText"
                             IsUser="true"
@@ -52,8 +53,9 @@
                             IsUser="false"
                             IsError="@item.IsError"
                             IsPending="@item.IsPending"
-                            Timestamp="@item.Timestamp"
+                            Timestamp="@(item.CompletedAt != DateTime.MinValue ? item.CompletedAt : item.Timestamp)"
                             LangLabel="@(item.IsError || item.IsPending ? null : item.TargetLang)" />
+                </div>
             }
         }
     </div>
@@ -127,13 +129,17 @@
             {
                 if (token.Error != null) { hasError = true; errorMsg = token.Error; break; }
                 if (!token.Done) { accumulated += token.Token; }
-                else { finalSource = token.SourceLang ?? string.Empty; }
+                else { finalSource = token.SourceLang ?? string.Empty; break; } // done=true 於此結束
             }
         }
-        catch (System.OperationCanceledException)
+        catch (System.OperationCanceledException) when (_streamCts.IsCancellationRequested)
         {
             hasError = true;
             errorMsg = "翻譯已取消";
+        }
+        catch (System.OperationCanceledException)
+        {
+            // Blazor WASM 特性：串流結束時可能拋出 OCE，非使用者取消，實際結果已取得則保留
         }
         catch (Exception ex)
         {
@@ -142,6 +148,7 @@
         }
 
         entry.IsPending = false;
+        entry.CompletedAt = DateTime.Now;
         entry.TranslatedText = hasError ? string.Empty : accumulated;
         entry.SourceLang = finalSource;
         entry.IsError = hasError;

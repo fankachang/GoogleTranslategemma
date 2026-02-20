@@ -161,11 +161,16 @@ async def _stream_generator(
     """SSE 串流生成器：每個 token 送出一個 data 事件，最後送出 done=true。"""
     try:
         if model is not None:
-            for token in model.translate_stream(text, source_lang=source, target_lang=target):
+            loop = asyncio.get_event_loop()
+            gen = model.translate_stream(text, source_lang=source, target_lang=target)
+            # TextIteratorStreamer 為同步阻塞，用 run_in_executor 避免阻塞 event loop
+            while True:
+                token = await loop.run_in_executor(None, next, gen, None)
+                if token is None:
+                    break
                 token = _apply_glossary(token, source, target, glossary_entries)
                 payload = json.dumps({"token": token, "done": False}, ensure_ascii=False)
                 yield f"data: {payload}\n\n"
-                await asyncio.sleep(0)  # yield to event loop
         else:
             placeholder = f"[TRANSLATED ({source}→{target})]: {text}"
             for char in placeholder:

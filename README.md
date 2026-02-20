@@ -114,6 +114,9 @@ python -m pip install torch --force-reinstall --index-url https://download.pytor
 # 4. 啟動後端
 cd backend
 uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+
+or 
+.venv\Scripts\Activate.ps1; uvicorn src.main:app --app-dir backend --host 0.0.0.0 --port 8000
 ```
 
 **前端：**
@@ -121,6 +124,8 @@ uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 cd frontend
 dotnet restore
 dotnet run
+or 
+dotnet run --project frontend/frontend.csproj
 ```
 
 ### 4. 前端外觀設定

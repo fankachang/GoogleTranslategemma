@@ -97,9 +97,21 @@ namespace TranslateGemma.Services
             using var stream = await resp.Content.ReadAsStreamAsync(ct);
             using var reader = new StreamReader(stream);
 
-            while (!reader.EndOfStream && !ct.IsCancellationRequested)
+            bool streamEndedNaturally = false;
+            while (!ct.IsCancellationRequested)
             {
-                var line = await reader.ReadLineAsync();
+                string? line;
+                try
+                {
+                    line = await reader.ReadLineAsync();
+                    if (line == null) break; // stream 正常結束（EOF）
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                {
+                    // Blazor WASM 特性：伺服器關閉串流時會拋出 OCE，但不是使用者取消
+                    streamEndedNaturally = true;
+                    break;
+                }
                 if (string.IsNullOrEmpty(line)) continue;
                 if (!line.StartsWith("data: ")) continue;
 
@@ -123,7 +135,7 @@ namespace TranslateGemma.Services
                 }
 
                 yield return token;
-                if (token.Done) break;
+                if (token.Done || streamEndedNaturally) break;
             }
         }
     }

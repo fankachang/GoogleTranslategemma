@@ -180,3 +180,6 @@ temp/
 *.swp
 *.swo
 *~
+
+# 自動產生的 Visual Studio Solution 檔
+*.sln
