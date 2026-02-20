@@ -50,12 +50,14 @@
             <MudTextField @bind-Value="_newSource"
                           Placeholder="原文"
                           Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Immediate="true"
                           Style="flex:1;"
                           OnKeyDown="OnNewEntryKeyDown" />
             <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Style="opacity:.45; flex-shrink:0;" />
             <MudTextField @bind-Value="_newTarget"
                           Placeholder="譯文"
                           Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Immediate="true"
                           Style="flex:1;"
                           OnKeyDown="OnNewEntryKeyDown" />
             <MudIconButton Icon="@Icons.Material.Filled.AddCircleOutline"
@@ -195,5 +197,12 @@
     }
 
     private void Cancel() => MudDialog.Close();
-    private void Confirm() => MudDialog.Close(DialogResult.Ok(_customEntries));
+
+    private void Confirm()
+    {
+        // 若新增列有未提交的內容，自動加入後再關閉
+        if (!string.IsNullOrWhiteSpace(_newSource) && !string.IsNullOrWhiteSpace(_newTarget))
+            AddEntry();
+        MudDialog.Close(DialogResult.Ok(_customEntries));
+    }
 }

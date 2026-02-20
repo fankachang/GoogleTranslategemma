@@ -22,10 +22,11 @@ SUPPORTED_LANGS = {"zh-TW", "en"}
 _fallback_config = load_config()
 
 
-def _apply_glossary(text: str, source_lang: str, target_lang: str, entries: list) -> str:
-    """套用術語對照表：將輸出文字中匹配的原文強制替換為指定譯文。
-    entries 可包含 dict（來自 config）或 GlossaryEntry pydantic 物件（來自請求）。
-    source_lang / target_lang 為空時視為「匹配任意語言對」。
+def _apply_glossary_preprocess(text: str, source_lang: str, target_lang: str, entries: list) -> tuple:
+    """翻譯前：將輸入文字中匹配的術語源詞直接替換為目標術語。
+    模型看到已是目標語言的詞彙，自然原樣保留，無需後置處理。
+    回傳 (處理後文字, 空的對映字典（保留介面相容性）)。
+    source_lang / target_lang 為空的 entry 視為匹配任意語言對。
     """
     for entry in entries:
         if isinstance(entry, dict):
@@ -51,6 +52,12 @@ def _apply_glossary(text: str, source_lang: str, target_lang: str, entries: list
         pattern = re.escape(src)
         flags = 0 if cs else re.IGNORECASE
         text = re.sub(pattern, tgt, text, flags=flags)
+
+    return text, {}
+
+
+def _apply_glossary_postprocess(text: str, sentinel_map: dict) -> str:
+    """後置處理（目前無需還原，保留介面相容性）。"""
     return text
 
 
@@ -146,37 +153,44 @@ def translate_endpoint(request: TranslationRequest, req: Request):
 
 
 def _do_translate_sync(text: str, source: str, target: str, model, glossary_entries: list, timeout_sec: int) -> str:
-    """同步執行翻譯，套用術語表。"""
+    """同步執行翻譯，前後套用術語表。"""
+    processed_text, sentinel_map = _apply_glossary_preprocess(text, source, target, glossary_entries)
     if model is not None:
-        translated = model.translate(text, source_lang=source, target_lang=target)
+        translated = model.translate(processed_text, source_lang=source, target_lang=target)
     else:
-        translated = f"[TRANSLATED ({source}→{target})]: {text}"
-    return _apply_glossary(translated, source, target, glossary_entries)
+        translated = f"[TRANSLATED ({source}→{target})]: {processed_text}"
+    return _apply_glossary_postprocess(translated, sentinel_map)
 
 
 async def _stream_generator(
     text: str, source: str, target: str, detected_flag: bool,
     model, glossary_entries: list, model_name: str
 ) -> AsyncGenerator[str, None]:
-    """SSE 串流生成器：每個 token 送出一個 data 事件，最後送出 done=true。"""
+    """SSE 串流生成器：先前置處理術語，翻譯後後置處理，再逐 token 送出。"""
     try:
+        # 前置：將輸入中的術語源詞換成哨兵
+        processed_text, sentinel_map = _apply_glossary_preprocess(text, source, target, glossary_entries)
+
         if model is not None:
             loop = asyncio.get_event_loop()
-            gen = model.translate_stream(text, source_lang=source, target_lang=target)
-            # TextIteratorStreamer 為同步阻塞，用 run_in_executor 避免阻塞 event loop
+            gen = model.translate_stream(processed_text, source_lang=source, target_lang=target)
+            # 收集完整輸出再套用術語（哨兵可能跨 token，需整體取代）
+            full_output = ""
             while True:
                 token = await loop.run_in_executor(None, next, gen, None)
                 if token is None:
                     break
-                token = _apply_glossary(token, source, target, glossary_entries)
-                payload = json.dumps({"token": token, "done": False}, ensure_ascii=False)
-                yield f"data: {payload}\n\n"
+                full_output += token
         else:
-            placeholder = f"[TRANSLATED ({source}→{target})]: {text}"
-            for char in placeholder:
-                payload = json.dumps({"token": char, "done": False}, ensure_ascii=False)
-                yield f"data: {payload}\n\n"
-                await asyncio.sleep(0)
+            full_output = f"[TRANSLATED ({source}→{target})]: {processed_text}"
+
+        # 後置：還原哨兵為目標術語
+        full_output = _apply_glossary_postprocess(full_output, sentinel_map)
+
+        # 逐字元送出（與前端現有串流消費邏輯相容）
+        for char in full_output:
+            payload = json.dumps({"token": char, "done": False}, ensure_ascii=False)
+            yield f"data: {payload}\n\n"
 
         # 最後一個 done event
         done_payload = json.dumps({

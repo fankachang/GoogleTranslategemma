@@ -49,7 +49,9 @@
     private async Task Submit()
     {
         if (string.IsNullOrWhiteSpace(Text) || Text.Length > 5000) return;
-        await OnSubmit.InvokeAsync(Text);
+        var text = Text;
+        Text = string.Empty;
+        await OnSubmit.InvokeAsync(text);
     }
 
     private Task Cancel() => OnCancel.InvokeAsync();
