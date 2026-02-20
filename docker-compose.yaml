@@ -14,7 +14,6 @@ services:
       - ./config.yaml:/app/config.yaml:ro
     environment:
       - PYTHONUNBUFFERED=1
-    shm_size: '16gb'   # mmap 大型模型需要足夠的共享記憶體
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
