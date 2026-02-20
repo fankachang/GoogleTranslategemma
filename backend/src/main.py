@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -26,14 +27,22 @@ async def lifespan(app: FastAPI):
         dtype=model_cfg.get("dtype", "auto"),
         max_new_tokens=translation_cfg.get("max_new_tokens", 512),
     )
-    try:
-        app.state.model.load()
-    except Exception:
-        pass
+    app.state.model_loading = True
     app.state.model_name = model_cfg.get("name")
     app.state.device = model_cfg.get("device")
     app.state.glossary = config.get("glossary", {"enabled": False, "entries": []})
     app.state.config = config
+
+    async def _load_model():
+        loop = asyncio.get_event_loop()
+        try:
+            await loop.run_in_executor(None, app.state.model.load)
+        except Exception:
+            pass
+        finally:
+            app.state.model_loading = False
+
+    asyncio.create_task(_load_model())
     yield
 
 

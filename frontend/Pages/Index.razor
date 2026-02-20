@@ -43,7 +43,7 @@
         {
             @foreach (var item in _history)
             {
-                <div style="max-width:720px; margin:0 auto; width:100%;">
+                <div style="width:@(AppCfg.ContentWidthPercent)%; margin:0 auto;">
                 @* 原文泡泡（右） *@
                 <ChatBubble Text="@item.OriginalText"
                             IsUser="true"
@@ -62,7 +62,7 @@
 
     @* ── 輸入框（固定底部） ── *@
     <div style="flex-shrink:0; display:flex; justify-content:center; padding:12px 16px 20px;">
-        <div style="width:100%; max-width:720px;">
+        <div style="width:@(AppCfg.ContentWidthPercent)%;">
             <TranslationInput IsSubmitting="@_isSubmitting"
                               OnSubmit="HandleSubmit"
                               OnCancel="HandleCancel" />

@@ -205,15 +205,17 @@ dotnet run --project frontend/frontend.csproj
 {
   "BackendUrl": "http://localhost:8000",
   "AppTitle": "TranslateGemma",
-  "AppLogoUrl": ""
+  "AppLogoUrl": "",
+  "ContentWidthPercent": 80
 }
 ```
 
-| 欄位 | 說明 | 預設值 |
-|------|------|--------|
+| 欄位 | 說明 | 預設値 |
+|------|------|------|
 | `BackendUrl` | 後端 API 位址 | `http://localhost:8000` |
 | `AppTitle` | 頁面標題及左上角顯示名稱 | `TranslateGemma` |
 | `AppLogoUrl` | 左上角 Logo 圖片路徑（相對於 `wwwroot`，例如 `/images/logo.png`）；**空白則不顯示圖示** | `""` |
+| `ContentWidthPercent` | 對話氣泡與輸入框的內容區塊寬度（佔瀏覽器視窗百分比，有效範圍 40–90 100） | `80` |
 
 **Logo 使用範例：**
 

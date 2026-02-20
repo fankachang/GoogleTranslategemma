@@ -7,11 +7,14 @@ router = APIRouter()
 def health(request: Request):
     app = request.app
     model = getattr(app.state, "model", None)
+    model_loading = getattr(app.state, "model_loading", False)
     loaded = False
     if model is not None:
         loaded = getattr(model, "model", None) is not None
 
-    if loaded:
+    if model_loading:
+        status = "loading"
+    elif loaded:
         status = "ok"
     elif model is not None:
         status = "degraded"  # model 物件存在但未載入
