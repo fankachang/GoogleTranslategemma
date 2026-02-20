@@ -39,9 +39,14 @@ def test_model_resolve_device_auto_returns_string():
     assert result in ("cpu", "cuda", "mps")
 
 
-def test_model_build_prompt():
+def test_model_build_messages():
     m = TranslateGemmaModel()
-    prompt = m._build_prompt("Hello", "en", "zh-TW")
-    assert "English" in prompt
-    assert "Traditional Chinese" in prompt
-    assert "Hello" in prompt
+    messages = m._build_messages("Hello", "en", "zh-TW")
+    assert isinstance(messages, list)
+    assert len(messages) == 1
+    msg = messages[0]
+    assert msg["role"] == "user"
+    content = msg["content"][0]
+    assert content["text"] == "Hello"
+    assert content["source_lang_code"] == "en"
+    assert content["target_lang_code"] == "zh-TW"
