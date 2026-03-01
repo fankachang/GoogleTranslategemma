@@ -10,7 +10,11 @@
 - 🎯 **簡單設計**：無帳號管理、無持久化，關閉即清除
 - 🖥️ **多裝置支援**：NVIDIA CUDA、Apple MPS、CPU
 
-## 🚀 快速開始
+## � 操作介面截圖
+
+![前端界面示意圖](./Docs/Images/frontend_interface.png)
+
+## �🚀 快速開始
 
 ### 前置需求
 
