@@ -13,4 +13,9 @@ public class AppConfig
     /// 有效範圍 40–100，預設 80。
     /// </summary>
     public int ContentWidthPercent { get; set; } = 80;
+    /// <summary>
+    /// 翻譯輸入欄位的字元上限（Unicode code points）。
+    /// 從後端 /api/config 動態取得；失敗時回退至預設值 512。
+    /// </summary>
+    public int MaxInputLength { get; set; } = 512;
 }

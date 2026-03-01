@@ -25,6 +25,7 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
     cfg.setdefault("translation", {})
     cfg["translation"].setdefault("timeout", 120)
     cfg["translation"].setdefault("max_new_tokens", 512)
+    cfg["translation"].setdefault("max_input_length", 512)
     cfg.setdefault("cors", {})
     cfg["cors"].setdefault("allow_origins", ["*"])
     # glossary defaults

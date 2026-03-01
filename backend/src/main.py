@@ -10,6 +10,7 @@ from .routes.health import router as health_router
 from .routes.translate import router as translate_router
 from .routes.languages import router as languages_router
 from .routes.glossary import router as glossary_router
+from .routes.config import router as config_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -60,4 +61,5 @@ app.include_router(health_router)
 app.include_router(translate_router, prefix="/api")
 app.include_router(languages_router, prefix="/api")
 app.include_router(glossary_router, prefix="/api")
+app.include_router(config_router, prefix="/api")
 

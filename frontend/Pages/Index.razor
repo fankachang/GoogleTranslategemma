@@ -65,7 +65,8 @@
         <div style="width:@(AppCfg.ContentWidthPercent)%;">
             <TranslationInput IsSubmitting="@_isSubmitting"
                               OnSubmit="HandleSubmit"
-                              OnCancel="HandleCancel" />
+                              OnCancel="HandleCancel"
+                              MaxInputLength="@AppCfg.MaxInputLength" />
         </div>
     </div>
 

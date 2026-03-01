@@ -118,6 +118,16 @@ def translate_endpoint(request: TranslationRequest, req: Request):
     if not text or not text.strip():
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="文字不能為空")
 
+    app_config = getattr(req.app.state, "config", _fallback_config)
+    max_input_length = app_config.get("translation", {}).get("max_input_length", 512)
+    if not isinstance(max_input_length, int) or max_input_length <= 0:
+        max_input_length = 512
+    if len(text) > max_input_length:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"輸入文字超過允許上限（{max_input_length} 字元）",
+        )
+
     source, target, detected_flag = _resolve_langs(request, text)
 
     glossary_cfg = getattr(req.app.state, "glossary", {"enabled": False, "entries": []})

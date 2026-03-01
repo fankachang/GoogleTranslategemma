@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
@@ -90,7 +91,18 @@ namespace TranslateGemma.Services
 
             if (resp == null || !resp.IsSuccessStatusCode)
             {
-                yield return new StreamToken("", true, Error: resp == null ? "無回應" : $"HTTP {resp.StatusCode}");
+                string errorMsg = resp == null ? "無回應" : $"HTTP {resp.StatusCode}";
+                if (resp?.StatusCode == HttpStatusCode.UnprocessableEntity)
+                {
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+                        if (doc.RootElement.TryGetProperty("detail", out var detailEl))
+                            errorMsg = detailEl.GetString() ?? errorMsg;
+                    }
+                    catch { }
+                }
+                yield return new StreamToken("", true, Error: errorMsg);
                 yield break;
             }
 

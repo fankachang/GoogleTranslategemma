@@ -11,7 +11,7 @@ class GlossaryEntry(BaseModel):
 
 
 class TranslationRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=5000)
+    text: str = Field(..., min_length=1, max_length=10000)
     source_lang: Optional[str] = None
     target_lang: Optional[str] = None
     stream: Optional[bool] = False
