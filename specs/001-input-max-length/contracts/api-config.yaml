@@ -1,0 +1,59 @@
+openapi: "3.1.0"
+info:
+  title: TranslateGemma Config API
+  description: |
+    公開設定端點，供前端在初始化時取得後端可設定值。
+    此端點無需驗證（FR-010）。
+  version: "1.0.0"
+
+paths:
+  /api/config:
+    get:
+      summary: 取得應用程式公開設定
+      operationId: getAppConfig
+      description: |
+        回傳後端目前生效的公開設定值。前端於啟動時呼叫此端點，
+        以確保前後端使用相同的業務限制（FR-006 單一設定來源）。
+        若呼叫失敗，前端應靜默回退至預設值（FR-011）。
+      security: []
+      responses:
+        "200":
+          description: 成功取得設定值
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppConfigResponse"
+              example:
+                max_input_length: 512
+        "500":
+          description: 後端設定讀取失敗（非預期錯誤）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    AppConfigResponse:
+      type: object
+      required:
+        - max_input_length
+      properties:
+        max_input_length:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          description: |
+            翻譯輸入允許的最大字元數（Unicode code points）。
+            對應 config.yaml 的 translation.max_input_length，預設值 512。
+          example: 512
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: 錯誤說明訊息
+          example: "內部錯誤"

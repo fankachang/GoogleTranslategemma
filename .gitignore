@@ -183,3 +183,8 @@ temp/
 
 # 自動產生的 Visual Studio Solution 檔
 *.sln
+skills-lock.json
+
+# 本地工具設定目錄
+.agent/
+.agents/
