@@ -1,4 +1,3 @@
-````skill
 ---
 name: container-image-hygiene
 description: 在使用 Podman/Docker 建構容器映像檔後自動清理 dangling images，避免產生大量 <none> 映像檔佔用磁碟空間。適用於本專案使用 podman compose build/docker compose build 建構 image、需要保持系統乾淨、排查為何 image prune 後仍殘留 <none> 的情境。
@@ -136,4 +135,3 @@ podman system prune -f
 - [ ] 建構流程使用 `.github/skills/container-image-hygiene/scripts/build.ps1` / `.github/skills/container-image-hygiene/scripts/build.sh`
 - [ ] 建構後執行過 `podman image prune -f`
 - [ ] 若仍殘留大型 `<none>`，已檢查並清掉停止容器後再 prune
-````
