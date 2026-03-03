@@ -83,12 +83,12 @@ def _build_glossary_entries(config_glossary: dict, request_glossary) -> list:
     return merged
 
 
-def _resolve_langs(request: TranslationRequest, text: str):
+def _resolve_langs(request: TranslationRequest, text: str, cjk_threshold: float = 0.2):
     """解析來源/目標語言，並驗證是否在白名單內。"""
     detected_flag = False
     source = request.source_lang
     if not source:
-        source = detect_language(text)
+        source = detect_language(text, cjk_threshold=cjk_threshold)
         detected_flag = True
     if source not in SUPPORTED_LANGS:
         raise HTTPException(
@@ -128,7 +128,8 @@ def translate_endpoint(request: TranslationRequest, req: Request):
             detail=f"輸入文字超過允許上限（{max_input_length} 字元）",
         )
 
-    source, target, detected_flag = _resolve_langs(request, text)
+    cjk_threshold = app_config.get("language_detection", {}).get("cjk_threshold", 0.2)
+    source, target, detected_flag = _resolve_langs(request, text, cjk_threshold=cjk_threshold)
 
     glossary_cfg = getattr(req.app.state, "glossary", {"enabled": False, "entries": []})
     glossary_entries = _build_glossary_entries(glossary_cfg, request.glossary)

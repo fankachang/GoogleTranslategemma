@@ -32,5 +32,8 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
     cfg.setdefault("glossary", {})
     cfg["glossary"].setdefault("enabled", False)
     cfg["glossary"].setdefault("entries", [])
+    # 語言偵測設定
+    cfg.setdefault("language_detection", {})
+    cfg["language_detection"].setdefault("cjk_threshold", 0.2)
 
     return cfg
