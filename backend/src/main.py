@@ -31,6 +31,7 @@ async def lifespan(app: FastAPI):
         base_path=model_cfg.get("base_path", "models"),
         dtype=model_cfg.get("dtype", "auto"),
         max_new_tokens=translation_cfg.get("max_new_tokens", 512),
+        model_path=model_cfg.get("path", ""),
     )
     app.state.model_loading = True
     app.state.model_name = model_cfg.get("name")

@@ -16,6 +16,7 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
     # Basic defaults and validation
     cfg.setdefault("model", {})
     cfg["model"].setdefault("name", "4b")
+    cfg["model"].setdefault("path", "")  # 指定模型目錄名稱；空字串時依 name 自動對應
     cfg["model"].setdefault("device", "auto")
     cfg["model"].setdefault("base_path", "models")
     cfg["model"].setdefault("dtype", "auto")

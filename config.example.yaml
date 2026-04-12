@@ -9,6 +9,11 @@ model:
   # 4B 適合記憶體有限環境，12B 提供更高翻譯品質
   name: "4b"
   
+  # 模型目錄名稱（相對於 base_path）
+  # 設定後直接使用此目錄，name 不再影響模型路徑解析（name 僅用於 /health 狀態顯示）
+  # 留空時依 name 自動對應: 4b → Translategemma-4b-it, 12b → Translategemma-12b-it
+  # path: "my-custom-model-dir"
+
   # 模型存放路徑（相對於專案根目錄）
   base_path: "models"
   

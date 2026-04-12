@@ -13,12 +13,13 @@ LANG_NAMES = {
 
 class TranslateGemmaModel:
     def __init__(self, model_name: str = "4b", device: str = "auto", base_path: str = "models",
-                 dtype: str = "auto", max_new_tokens: int = 512):
+                 dtype: str = "auto", max_new_tokens: int = 512, model_path: str = ""):
         self.model_name = model_name
         self.device = device
         self.base_path = base_path
         self.dtype = dtype
         self.max_new_tokens = max_new_tokens
+        self.model_path = model_path  # 若設定則直接用作目錄名稱，優先於 name_map
         self.model = None
         self.tokenizer = None
         self._resolved_device = "cpu"
@@ -51,12 +52,12 @@ class TranslateGemmaModel:
             return None
 
     def _get_model_path(self) -> str:
-        """根據 model_name (4b/12b) 對應本地模型目錄."""
+        """解析本地模型目錄路徑。優先使用 config model.path，其次依 name 自動對應。"""
         name_map = {
             "4b": "Translategemma-4b-it",
             "12b": "Translategemma-12b-it",
         }
-        folder = name_map.get(self.model_name, self.model_name)
+        folder = self.model_path or name_map.get(self.model_name, self.model_name)
         local_path = Path(self.base_path) / folder
         if local_path.exists():
             return str(local_path)
