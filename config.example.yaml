@@ -5,6 +5,20 @@
 
 # 模型設定
 model:
+  # 推論後端選擇: "local" | "ollama"
+  # local: 行程內直接載入本地模型檔案（預設，向下相容）
+  # ollama: 以 REST API 呼叫外部 Ollama 服務
+  backend: "local"
+
+  # ── Ollama 後端設定（backend: "ollama" 時生效）──────────────────────────
+  # Ollama 服務的完整 URL（支援遠端伺服器，例如 http://192.168.1.10:11434）
+  ollama_base_url: "http://localhost:11434"
+  
+  # Ollama 中已拉取的模型名稱（需先執行 ollama pull <model>）
+  ollama_model: "translategemma:4b"
+  # ────────────────────────────────────────────────────────────────────────
+
+  # ── Local 後端設定（backend: "local" 時生效）────────────────────────────
   # 模型選擇: "4b" | "12b"
   # 4B 適合記憶體有限環境，12B 提供更高翻譯品質
   name: "4b"
@@ -24,6 +38,7 @@ model:
   # 資料型別: "auto" | "bfloat16" | "float16" | "float32"
   # auto 會依裝置自動選擇: CUDA/MPS → bfloat16, CPU → float32
   dtype: "auto"
+  # ────────────────────────────────────────────────────────────────────────
 
 # 伺服器設定
 server:
