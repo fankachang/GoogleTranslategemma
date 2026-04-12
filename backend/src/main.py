@@ -8,7 +8,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.staticfiles import StaticFiles
 from swagger_ui_bundle import swagger_ui_path
 from .config import load_config
-from .model import TranslateGemmaModel
+from .backends import create_backend, OllamaBackend, LocalBackend
 
 from .routes.health import router as health_router
 from .routes.translate import router as translate_router
@@ -24,32 +24,36 @@ config = load_config()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     model_cfg = config.get("model", {})
-    translation_cfg = config.get("translation", {})
-    app.state.model = TranslateGemmaModel(
-        model_name=model_cfg.get("name", "4b"),
-        device=model_cfg.get("device", "auto"),
-        base_path=model_cfg.get("base_path", "models"),
-        dtype=model_cfg.get("dtype", "auto"),
-        max_new_tokens=translation_cfg.get("max_new_tokens", 512),
-        model_path=model_cfg.get("path", ""),
-    )
-    app.state.model_loading = True
-    app.state.model_name = model_cfg.get("name")
-    app.state.device = model_cfg.get("device")
+    backend = create_backend(config)
+    app.state.model = backend
+    app.state.model_name = model_cfg.get("name") if isinstance(backend, LocalBackend) else model_cfg.get("ollama_model")
+    app.state.device = model_cfg.get("device") if isinstance(backend, LocalBackend) else None
     app.state.glossary = config.get("glossary", {"enabled": False, "entries": []})
     app.state.config = config
 
-    async def _load_model():
-        loop = asyncio.get_event_loop()
-        try:
-            await loop.run_in_executor(None, app.state.model.load)
-        except Exception:
-            pass
-        finally:
-            app.state.model_loading = False
+    if isinstance(backend, LocalBackend):
+        app.state.model_loading = True
 
-    asyncio.create_task(_load_model())
+        async def _load_model():
+            loop = asyncio.get_event_loop()
+            try:
+                await loop.run_in_executor(None, backend.load)
+            except Exception:
+                pass
+            finally:
+                app.state.model_loading = False
+
+        asyncio.create_task(_load_model())
+    else:
+        app.state.model_loading = False
+        # OllamaBackend: 非同步啟動驗證（非阻塞）
+        asyncio.create_task(backend.startup())
+
     yield
+
+    # Lifespan 結束：釋放 OllamaBackend 的 httpx.Client
+    if isinstance(backend, OllamaBackend):
+        await backend.aclose()
 
 
 app = FastAPI(title="TranslateGemma", lifespan=lifespan, docs_url=None)

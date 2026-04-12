@@ -1,0 +1,105 @@
+openapi: "3.1.0"
+info:
+  title: TranslateGemma API — 001-ollama-backend 功能範圍
+  version: "2.0.0"
+  description: |
+    本文件涵蓋 001-ollama-backend 功能新增或異動的端點。
+    現有端點 /api/translate、/api/languages、/api/glossary 介面契約不異動。
+    僅 GET /health 回應 schema 擴充（新增 backend、ollama_url 欄位）。
+
+paths:
+  /health:
+    get:
+      summary: 服務健康檢查
+      description: |
+        回報目前使用的推論後端類型與連線/載入狀態。
+        **異動**：新增 backend 欄位；ollama 後端新增 ollama_url 欄位。
+        local 後端回應格式向下相容，新增 backend 欄位，其餘欄位不變。
+      responses:
+        "200":
+          description: 健康狀態（無論是否正常均回 200，以 status 欄位判斷）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              examples:
+                local_ok:
+                  summary: local 後端，模型已載入
+                  value:
+                    status: "ok"
+                    backend: "local"
+                    model: "Translategemma-4b-it"
+                    device: "auto"
+                    resolved_device: "mps"
+                    model_loaded: true
+                    ollama_url: null
+                local_loading:
+                  summary: local 後端，模型載入中
+                  value:
+                    status: "loading"
+                    backend: "local"
+                    model: "Translategemma-4b-it"
+                    device: "auto"
+                    resolved_device: null
+                    model_loaded: false
+                    ollama_url: null
+                ollama_ok:
+                  summary: ollama 後端，服務可達
+                  value:
+                    status: "ok"
+                    backend: "ollama"
+                    model: "translategemma:4b"
+                    device: null
+                    resolved_device: null
+                    model_loaded: true
+                    ollama_url: "http://localhost:11434"
+                ollama_error:
+                  summary: ollama 後端，服務無法連線
+                  value:
+                    status: "error"
+                    backend: "ollama"
+                    model: "translategemma:4b"
+                    device: null
+                    resolved_device: null
+                    model_loaded: false
+                    ollama_url: "http://localhost:11434"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - backend
+      properties:
+        status:
+          type: string
+          enum: ["ok", "loading", "degraded", "error"]
+          description: >
+            ok: 服務正常；
+            loading: local 後端模型載入中；
+            degraded: local 後端模型物件存在但推論不可用；
+            error: 服務異常（local 模型未載入 或 ollama 連線失敗）
+        backend:
+          type: string
+          enum: ["local", "ollama"]
+          description: 目前使用的推論後端類型
+        model:
+          type: string
+          nullable: true
+          description: 模型名稱（local 為路徑目錄名；ollama 為 ollama_model 設定值）
+        device:
+          type: string
+          nullable: true
+          description: 推論裝置設定值（ollama 後端為 null）
+        resolved_device:
+          type: string
+          nullable: true
+          description: 實際使用的推論裝置（ollama 後端為 null）
+        model_loaded:
+          type: boolean
+          description: 模型是否已就緒（ollama 後端連線成功時視為 true）
+        ollama_url:
+          type: string
+          nullable: true
+          description: Ollama 服務位址（僅 ollama 後端填入，local 後端為 null）

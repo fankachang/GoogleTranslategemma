@@ -7,6 +7,7 @@
 - 🌐 **前端**：Blazor WebAssembly (.NET 9) + MudBlazor，完全在瀏覽器運行
 - ⚡ **後端**：FastAPI (Python)，高效能非同步 API，支援 SSE 串流
 - 🤖 **模型**：TranslateGemma 4B / 12B，支援繁體中文 ↔ 英文雙向翻譯
+- 🔌 **雙後端架構**：`local`（行程內直接載入）或 `ollama`（REST API 呼叫外部 Ollama 服務），可於 `config.yaml` 自由切換
 - 🎯 **簡單設計**：無帳號管理、無持久化，關閉即清除
 - 🖥️ **多裝置支援**：NVIDIA CUDA、Apple MPS、CPU
 
@@ -67,14 +68,31 @@ git clone https://huggingface.co/google/translategemma-12b-it Translategemma-12b
 cp config.example.yaml config.yaml
 ```
 
-編輯 `config.yaml`：
+編輯 `config.yaml`，依目標後端二擇一：
+
+**方案 A：Local 後端**（行程內直接載入，需先下載模型檔）
 
 ```yaml
 model:
+  backend: "local"     # 預設值，向下相容
   name: "4b"           # 選擇 "4b" 或 "12b"
   device: "auto"       # 自動偵測 cuda → mps → cpu
   dtype: "auto"        # 自動選擇精度
 ```
+
+**方案 B：Ollama 後端**（呼叫外部 Ollama 服務，無需在本機下載模型）
+
+```yaml
+model:
+  backend: "ollama"
+  ollama_base_url: "http://localhost:11434"
+  ollama_model: "translategemma:4b"
+```
+
+> 使用 Ollama 後端前，請先安裝 [Ollama](https://ollama.com) 並執行：
+> ```bash
+> ollama pull translategemma:4b
+> ```
 
 > **GPU 使用注意**：`pip install torch` 預設可能只安裝 CPU 版本（可用 `python -c "import torch; print(torch.__version__)"` 確認，若輸出含 `+cpu` 表示 CPU 版）。
 > 需另行安裝 CUDA-enabled 版本：
@@ -284,7 +302,8 @@ Windows PowerShell 亦可一行啟動後端：
 |------|------|
 | 前端 | Blazor WebAssembly (.NET 9) + MudBlazor |
 | 後端 | Python FastAPI |
-| 模型 | Google TranslateGemma (Hugging Face Transformers) |
+| 推論後端（local） | Google TranslateGemma (Hugging Face Transformers) |
+| 推論後端（ollama） | Ollama REST API（httpx） |
 | 推論加速 | CUDA / MPS / CPU |
 | 容器化 | Podman / Docker |
 
