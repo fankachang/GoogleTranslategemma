@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.openapi.utils import get_openapi
 from fastapi.staticfiles import StaticFiles
 from swagger_ui_bundle import swagger_ui_path
 from .config import load_config
@@ -50,7 +51,22 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="TranslateGemma", lifespan=lifespan, docs_url=None, openapi_version="3.0.3")
+app = FastAPI(title="TranslateGemma", lifespan=lifespan, docs_url=None)
+
+
+def _custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    app.openapi_schema = get_openapi(
+        title=app.title,
+        version="0.1.0",
+        openapi_version="3.0.3",
+        routes=app.routes,
+    )
+    return app.openapi_schema
+
+
+app.openapi = _custom_openapi
 
 app.add_middleware(
     CORSMiddleware,
