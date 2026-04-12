@@ -236,9 +236,15 @@ uvicorn src.main:app --app-dir backend --host 0.0.0.0 --port 8000 --workers 1
 **後端（支援程式碼異動自動重啟）：**
 
 ```bash
+# 方式一：從專案根目錄以 PYTHONPATH 執行（推薦）
+PYTHONPATH=. .venv/bin/uvicorn backend.src.main:app --host 0.0.0.0 --port 8000 --reload
+
+# 方式二：進入虛擬環境後以 --app-dir 執行
 source .venv/bin/activate
 uvicorn src.main:app --app-dir backend --host 0.0.0.0 --port 8000 --reload
 ```
+
+> **Ollama 後端開發提示**：將 `config.yaml` 的 `model.backend` 設為 `"ollama"` 後啟動，可跳過本地模型載入（省去數分鐘等待），適合只需驗證 API / 前端行為的開發情境。
 
 **前端（dotnet watch，支援 Hot Reload）：**
 
@@ -249,7 +255,7 @@ dotnet run --project frontend/frontend.csproj
 Windows PowerShell 亦可一行啟動後端：
 
 ```powershell
-.venv\Scripts\Activate.ps1; uvicorn src.main:app --app-dir backend --host 0.0.0.0 --port 8000 --reload
+$env:PYTHONPATH="."; .venv\Scripts\uvicorn.exe backend.src.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ### 5. 前端外觀設定
