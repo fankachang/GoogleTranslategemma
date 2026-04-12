@@ -3,6 +3,9 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.staticfiles import StaticFiles
+from swagger_ui_bundle import swagger_ui_path
 from .config import load_config
 from .model import TranslateGemmaModel
 
@@ -47,7 +50,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="TranslateGemma", lifespan=lifespan)
+app = FastAPI(title="TranslateGemma", lifespan=lifespan, docs_url=None, openapi_version="3.0.3")
 
 app.add_middleware(
     CORSMiddleware,
@@ -55,6 +58,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 掛載 swagger-ui 靜態檔案（離線支援）
+app.mount("/swagger-ui-static", StaticFiles(directory=swagger_ui_path), name="swagger-ui-static")
+
+
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui():
+    return get_swagger_ui_html(
+        openapi_url="/openapi.json",
+        title=app.title + " - Swagger UI",
+        swagger_js_url="/swagger-ui-static/swagger-ui-bundle.js",
+        swagger_css_url="/swagger-ui-static/swagger-ui.css",
+        swagger_favicon_url="/swagger-ui-static/favicon-32x32.png",
+    )
+
 
 # mount routers
 app.include_router(health_router)
