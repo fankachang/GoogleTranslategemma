@@ -252,6 +252,28 @@ uvicorn src.main:app --app-dir backend --host 0.0.0.0 --port 8000 --reload
 dotnet run --project frontend/frontend.csproj
 ```
 
+**前端重新編譯（手動）：**
+
+```bash
+# 本機重新編譯（Debug）
+dotnet build frontend/frontend.csproj -c Debug
+
+# 本機重新編譯（Release）
+dotnet build frontend/frontend.csproj -c Release
+```
+
+若使用容器部署前端，請重新建置 frontend image：
+
+```bash
+# 一般重建
+podman-compose build frontend
+podman-compose up -d frontend
+
+# 不使用快取強制重建
+podman-compose build --no-cache frontend
+podman-compose up -d frontend
+```
+
 Windows PowerShell 亦可一行啟動後端：
 
 ```powershell
