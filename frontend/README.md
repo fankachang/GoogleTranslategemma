@@ -93,3 +93,26 @@ podman build -t translategemma-frontend -f Containerfile.frontend .
 構建流程：
 1. 使用 `dotnet/sdk:9.0` 發行 Blazor WASM 靜態檔案
 2. 使用 `nginx:alpine` 提供靜態檔案服務（含 SPA fallback）
+
+### Windows 防火牆設定（從區域網路存取）
+
+容器啟動後綁定 `0.0.0.0:5000`，但 **Windows 防火牆**預設會封鎖外部連線。若需從其他裝置存取，請以**系統管理員身分**執行：
+
+```powershell
+netsh advfirewall firewall add rule name="TranslateGemma Frontend 5000" dir=in action=allow protocol=TCP localport=5000 profile=private,domain
+```
+
+若使用 Windows 上的 Podman Desktop（WSL backend），Windows 端實際監聽可能仍只落在 `127.0.0.1:5000`。這種情況即使防火牆已開放，區域網路 IP 仍會出現「拒絕連線」，需要再建立 `portproxy`：
+
+```powershell
+Set-Service iphlpsvc -StartupType Automatic
+Start-Service iphlpsvc
+netsh interface portproxy add v4tov4 listenaddress=10.1.1.99 listenport=5000 connectaddress=127.0.0.1 connectport=5000
+```
+
+可用以下指令確認：
+
+```powershell
+netsh interface portproxy show all
+Test-NetConnection 10.1.1.99 -Port 5000
+```

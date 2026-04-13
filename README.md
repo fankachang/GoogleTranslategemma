@@ -319,6 +319,52 @@ $env:PYTHONPATH="."; .venv\Scripts\uvicorn.exe backend.src.main:app --host 0.0.0
 - **前端介面**：http://localhost:5000
 - **後端 API 文件**：http://localhost:8000/docs
 
+#### Windows 防火牆設定（從區域網路存取）
+
+容器啟動後會綁定 `0.0.0.0`，允許區域網路連線，但 **Windows 防火牆**預設會封鎖外部連線。若需從其他裝置透過區域網路 IP（例如 `10.1.1.99`）存取前端，請以**系統管理員身分**執行以下 PowerShell 指令：
+
+```powershell
+# 開放前端 port（容器部署，port 5000）
+netsh advfirewall firewall add rule name="TranslateGemma Frontend 5000" dir=in action=allow protocol=TCP localport=5000 profile=private,domain
+
+# 若需直接從外部呼叫後端 API（port 8000）
+netsh advfirewall firewall add rule name="TranslateGemma Backend 8000" dir=in action=allow protocol=TCP localport=8000 profile=private,domain
+```
+
+> 規則套用至私人與網域設定檔（`private,domain`），不影響公用網路（`public`）。
+
+#### Windows + Podman Desktop + WSL 額外設定
+
+若使用 Windows 上的 Podman Desktop（WSL backend），即使容器顯示 `0.0.0.0:5000->80/tcp`，Windows 端實際上仍可能只由 `wslrelay` 監聽 `127.0.0.1:5000`，導致從區域網路 IP（例如 `10.1.1.99:5000`）仍然無法連線。這種情況除了防火牆外，還需要在 Windows 主機建立 `portproxy`：
+
+```powershell
+# 確保 IP Helper 服務已啟用
+Set-Service iphlpsvc -StartupType Automatic
+Start-Service iphlpsvc
+
+# 將區域網路 IP:5000 轉發到本機 localhost:5000
+netsh interface portproxy add v4tov4 listenaddress=10.1.1.99 listenport=5000 connectaddress=127.0.0.1 connectport=5000
+
+# 若需讓其他裝置直接呼叫後端 API，再加開 8000
+netsh interface portproxy add v4tov4 listenaddress=10.1.1.99 listenport=8000 connectaddress=127.0.0.1 connectport=8000
+```
+
+檢查目前設定：
+
+```powershell
+netsh interface portproxy show all
+Test-NetConnection 10.1.1.99 -Port 5000
+```
+
+刪除規則：
+
+```powershell
+netsh interface portproxy delete v4tov4 listenaddress=10.1.1.99 listenport=5000
+netsh interface portproxy delete v4tov4 listenaddress=10.1.1.99 listenport=8000
+```
+
+> 若前端將提供給其他裝置使用，`frontend/wwwroot/appsettings.json` 的 `BackendUrl` 不能維持 `http://localhost:8000`，否則使用者的瀏覽器會連到「自己電腦」的 localhost，而不是這台服務主機。
+
 ## 📖 文件
 
 - [需求規格書](Docs/001_requestment.md)
