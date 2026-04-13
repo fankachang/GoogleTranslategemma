@@ -8,4 +8,5 @@ pyyaml
 pytest
 pytest-asyncio
 python-dotenv
-swagger-ui-bundlehttpx
+swagger-ui-bundle
+httpx
