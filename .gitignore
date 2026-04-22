@@ -43,6 +43,10 @@ dist/
 build/
 *.egg-info/
 
+# pip wheel 快取（用於離線 build，不納入版控）
+backend/pip-cache/*
+!backend/pip-cache/.gitkeep
+
 # Temporary
 tmp/
 temp/# ========================================

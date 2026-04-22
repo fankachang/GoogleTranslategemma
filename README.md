@@ -266,13 +266,37 @@ echo $env:BACKEND_URL
 
 **步驟二：啟動服務**
 
-```bash
-# 一般環境（CPU）
-podman-compose up -d
+容器建置時自動選擇以下其中一種安裝策略：
 
-# Windows + NVIDIA GPU（帶入 GPU override）
+| 策略 | 觸發條件 | 說明 |
+|------|---------|------|
+| **A：離線安裝** | `backend/pip-cache/` 有 `.whl` 檔 | 直接使用預下載的 wheel，無需網路 |
+| **B：線上安裝** | `backend/pip-cache/` 為空 | 從 PyPI / PyTorch 下載，Podman Build cache 自動加速後續建置 |
+
+**Linux / macOS（或無 GPU）— 直接執行：**
+
+```bash
+# CPU 模式，或 Linux + NVIDIA GPU（需已安裝 NVIDIA Container Toolkit）
+podman-compose up -d
+```
+
+第一次建置會從網路下載套件；Podman 會自動快取，後續建置不需重新下載。
+
+**Windows + NVIDIA GPU：**
+
+```powershell
+# 方式一（推薦）：自動管理 pip-cache，確保離線可用
+# pip-cache 為空時先在 Linux 容器內下載正確平台的 wheel，再 build + up
+.\build-backend.ps1             # CUDA 12.4（預設，適用 RTX 系列）
+.\build-backend.ps1 -CPU        # CPU-only torch
+
+# 方式二：直接呼叫 podman-compose（pip-cache 空時需網路）
 podman-compose -f docker-compose.yaml -f docker-compose.gpu.yaml up -d
 ```
+
+> **為何需要 `build-backend.ps1`**：在 Windows 執行 `pip download` 只會下載 Windows wheel（`win_amd64`），Linux 容器無法使用。`build-backend.ps1` 會先在 `python:3.11-slim` Linux 容器內下載 wheel（透過 volume mount 寫回 `backend/pip-cache/`），確保取得正確平台的套件（含 `uvloop` 等 Linux-only 套件）。
+
+> **GPU 直通說明**：GPU 設定已獨立至 `docker-compose.gpu.yaml`，預設不帶入，避免非 NVIDIA 環境因找不到 CDI 裝置而報錯。
 
 Docker Compose 同理：
 
@@ -280,8 +304,6 @@ Docker Compose 同理：
 docker-compose up -d
 docker-compose -f docker-compose.yaml -f docker-compose.gpu.yaml up -d
 ```
-
-> **GPU 直通說明**：GPU 設定已獨立至 `docker-compose.gpu.yaml`，預設不帶入，避免非 NVIDIA 環境因找不到 CDI 裝置而報錯。
 
 **重新建置前端 image（程式碼變更後）：**
 

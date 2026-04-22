@@ -3,9 +3,28 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /build
 
-# 僅複製 requirements 以利用 Docker layer cache
 COPY backend/requirements.txt ./
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# ── 安裝策略（二選一，擇優自動切換）────────────────────────────────────────────
+#
+# 策略 A（優先）：pip-cache/ 有 wheel → 離線安裝（封閉網路部署）
+#   預先填充方式：執行 .\build-backend.ps1（Windows）或 ./build-backend.sh（Linux）
+#   此後 podman-compose up 直接離線 build，無需網路。
+#
+# 策略 B（退回）：pip-cache/ 為空 → BuildKit pip cache 加速線上安裝
+#   第一次 build 從網路下載，Podman 自動快取至本機 Build cache；
+#   後續 podman-compose up 直接復用快取，與「有 pip-cache 一樣快」。
+#   此模式下直接執行 podman-compose 即可，無需任何前置步驟。
+#
+COPY backend/pip-cache/ ./pip-cache/
+RUN if ls ./pip-cache/*.whl 1>/dev/null 2>&1; then \
+      echo "==> 離線安裝（pip-cache）" ; \
+      pip install --no-cache-dir --prefix=/install --no-index \
+        --find-links=./pip-cache -r requirements.txt ; \
+    else \
+      echo "==> 線上安裝（BuildKit cache 加速）" ; \
+      pip install --no-cache-dir --prefix=/install -r requirements.txt ; \
+    fi
 
 # ── 第二階段：執行環境 ─────────────────────────────────────────────────────────
 FROM python:3.11-slim
