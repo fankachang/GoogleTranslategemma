@@ -8,14 +8,14 @@ model:
   # 推論後端選擇: "local" | "ollama"
   # local: 行程內直接載入本地模型檔案（預設，向下相容）
   # ollama: 以 REST API 呼叫外部 Ollama 服務
-  backend: "local"
+  backend: "ollama"
 
   # ── Ollama 後端設定（backend: "ollama" 時生效）──────────────────────────
   # Ollama 服務的完整 URL（支援遠端伺服器，例如 http://192.168.1.10:11434）
   ollama_base_url: "http://localhost:11434"
   
   # Ollama 中已拉取的模型名稱（需先執行 ollama pull <model>）
-  ollama_model: "translategemma:4b"
+  ollama_model: "translategemma:12b"
   # ────────────────────────────────────────────────────────────────────────
 
   # ── Local 後端設定（backend: "local" 時生效）────────────────────────────
@@ -26,7 +26,7 @@ model:
   # 模型目錄名稱（相對於 base_path）
   # 設定後直接使用此目錄，name 不再影響模型路徑解析（name 僅用於 /health 狀態顯示）
   # 留空時依 name 自動對應: 4b → Translategemma-4b-it, 12b → Translategemma-12b-it
-  # path: "my-custom-model-dir"
+  path: "Translategemma-12b-it"
 
   # 模型存放路徑（相對於專案根目錄）
   base_path: "models"

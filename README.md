@@ -74,10 +74,11 @@ cp config.example.yaml config.yaml
 
 ```yaml
 model:
-  backend: "local"     # 預設值，向下相容
-  name: "4b"           # 選擇 "4b" 或 "12b"
-  device: "auto"       # 自動偵測 cuda → mps → cpu
-  dtype: "auto"        # 自動選擇精度
+  backend: "local"              # 預設值，向下相容
+  name: "4b"                    # 選擇 "4b" 或 "12b"
+  path: "Translategemma-4b-it"  # 模型目錄名稱（相對於 base_path）
+  device: "auto"                # 自動偵測 cuda → mps → cpu
+  dtype: "auto"                 # 自動選擇精度 CUDA/MPS → bfloat16, CPU → float32
 ```
 
 **方案 B：Ollama 後端**（呼叫外部 Ollama 服務，無需在本機下載模型）
@@ -89,20 +90,21 @@ model:
   ollama_model: "translategemma:4b"
 ```
 
-> 使用 Ollama 後端前，請先安裝 [Ollama](https://ollama.com) 並執行：
-> ```bash
-> ollama pull translategemma:4b
-> ```
+* 使用 Ollama 後端前，請先安裝 [Ollama](https://ollama.com) 並執行：
 
-> **GPU 使用注意**：`pip install torch` 預設可能只安裝 CPU 版本（可用 `python -c "import torch; print(torch.__version__)"` 確認，若輸出含 `+cpu` 表示 CPU 版）。
-> 需另行安裝 CUDA-enabled 版本：
-> ```bash
-> # CUDA 12.4（適用驅動版本 ≥ 550.x，如 RTX 4060）
-> pip install torch --index-url https://download.pytorch.org/whl/cu124
-> ```
-> 完整安裝指令請至 https://pytorch.org/get-started/locally/ 選擇。
->
-> **dtype 建議**：8GB GPU（如 RTX 4060）請使用 `dtype: "float16"`；`float32` 會導致 OOM。
+```bash
+ollama pull translategemma:4b
+```
+
+* **GPU 使用注意**：`pip install torch` 預設可能只安裝 CPU 版本（可用 `python -c "import torch; print(torch.__version__)"` 確認，若輸出含 `+cpu` 表示 CPU 版）。
+  * 需另行安裝 CUDA-enabled 版本：
+    ```bash
+    # CUDA 12.4（適用驅動版本 ≥ 550.x，如 RTX 4060）
+    pip install torch --index-url https://download.pytorch.org/whl/cu124
+    ```
+ * 完整安裝指令請至 https://pytorch.org/get-started/locally/ 選擇。
+
+ * **dtype 建議**：8GB GPU（如 RTX 4060）請使用 `dtype: "float16"`；`float32` 會導致 OOM。
 
 ### 3. （選用）啟用 GPU 容器加速
 
@@ -171,21 +173,98 @@ model:
   dtype: "float16" # 8 GB VRAM（如 RTX 4060）建議使用 float16
 ```
 
-### 4. 啟動服務
+### 4. 本地開發
 
-依環境選擇對應部署方式：
+> 以下啟用 hot-reload，**僅供開發使用**，不建議用於正式服務。
 
-| 環境 | 後端 | 前端 | MPS/GPU |
-|------|------|------|---------|
-| Linux / Windows 正式 | 容器 | 容器 | CUDA（需另帶 GPU override） |
-| macOS Apple Silicon 正式 | **本機執行** | 容器 | ✅ MPS |
-| 本地開發 | 本機（--reload） | dotnet run | ✅ MPS |
+#### 後端（支援程式碼異動自動重啟）
+
+**Linux / macOS：**
+
+```bash
+# 方式一：從專案根目錄以 PYTHONPATH 執行（推薦）
+PYTHONPATH=. .venv/bin/uvicorn backend.src.main:app --host 0.0.0.0 --port 8000 --reload
+
+# 方式二：進入虛擬環境後以 --app-dir 執行
+source .venv/bin/activate
+uvicorn src.main:app --app-dir backend --host 0.0.0.0 --port 8000 --reload
+```
+
+**Windows PowerShell：**
+
+```powershell
+$env:PYTHONPATH="."; .venv\Scripts\uvicorn.exe backend.src.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+> **Ollama 後端開發提示**：將 `config.yaml` 的 `model.backend` 設為 `"ollama"` 後啟動，可跳過本地模型載入（省去數分鐘等待），適合只需驗證 API / 前端行為的開發情境。
+
+#### 前端（dotnet run，支援 Hot Reload）
+
+```bash
+dotnet run --project frontend/frontend.csproj
+```
+
+> **BackendUrl 自動套用**：`dotnet run` 預設使用 `Development` 環境，會自動讀取 `frontend/wwwroot/appsettings.Development.json` 覆蓋 `appsettings.json` 的佔位符，`BackendUrl` 固定指向 `http://localhost:8000`，無需額外設定。
+
+開啟瀏覽器：http://localhost:5000（`dotnet run` 預設埠）
 
 ---
 
-#### 容器部署（Linux / Windows 正式環境）
+### 5. 正式部署
 
-> Podman / Docker 在 macOS 透過 Linux VM 執行容器，**Metal / MPS 無法穿透**，macOS 請改用下方「macOS 正式部署」。
+依環境選擇對應方式：
+
+| 方式 | 前端 | 後端 | 適用環境 |
+|------|------|------|---------|
+| **容器（Podman / Docker）** | 容器（nginx） | 容器 | Linux、Windows、macOS（MPS 除外） |
+| **IIS + 本機後端** | IIS 靜態網站 | 本機執行 | Windows（現有 IIS 伺服器） |
+| **macOS MPS** | 容器（nginx） | 本機執行 | Apple Silicon Mac |
+
+---
+
+#### 方式 A：容器部署（Podman / Docker）
+
+> Podman / Docker 在 macOS 透過 Linux VM 執行容器，**Metal / MPS 無法穿透**，macOS 請改用下方「方式 C」。
+
+**步驟一：設定後端 URL 環境變數**
+
+容器啟動時會自動將 `appsettings.json` 內的 `${BACKEND_URL}` 替換為此變數。若省略，前端會動態將 `localhost` 替換為瀏覽器所連的主機 IP。
+
+**Linux / macOS：**
+
+```bash
+export BACKEND_URL=http://10.1.1.99:8000
+```
+
+**Windows PowerShell：**
+
+```powershell
+# 僅當前視窗有效（關閉後消失）
+$env:BACKEND_URL = "http://10.1.1.99:8000"
+```
+
+若需永久儲存，改用以下指令：
+
+```powershell
+# 使用者層級（不需系統管理員）
+[System.Environment]::SetEnvironmentVariable("BACKEND_URL", "http://10.1.1.99:8000", "User")
+
+# 系統層級（需系統管理員，所有使用者皆生效）
+[System.Environment]::SetEnvironmentVariable("BACKEND_URL", "http://10.1.1.99:8000", "Machine")
+```
+
+* **注意**：`SetEnvironmentVariable` 寫入的是 Windows 登錄檔，**不會立即注入目前已開啟的終端**。需重新開啟 PowerShell 才能生效，或在目前視窗手動載入：
+  ```powershell
+  $env:BACKEND_URL = [System.Environment]::GetEnvironmentVariable("BACKEND_URL", "User")
+  ```
+
+* 確認設定是否生效：
+
+```powershell
+echo $env:BACKEND_URL
+```
+
+**步驟二：啟動服務**
 
 ```bash
 # 一般環境（CPU）
@@ -204,65 +283,7 @@ docker-compose -f docker-compose.yaml -f docker-compose.gpu.yaml up -d
 
 > **GPU 直通說明**：GPU 設定已獨立至 `docker-compose.gpu.yaml`，預設不帶入，避免非 NVIDIA 環境因找不到 CDI 裝置而報錯。
 
----
-
-#### macOS Apple Silicon 正式部署（MPS 加速）
-
-後端需本機執行才能存取 Metal/MPS；前端靜態檔案仍可透過容器以 nginx 服務。
-
-**步驟一：啟動前端容器**
-
-```bash
-cd frontend
-podman build -t translategemma-frontend .
-podman run -d --name translategemma-frontend -p 5000:80 translategemma-frontend
-```
-
-**步驟二：本機啟動後端（正式模式，無 hot-reload）**
-
-```bash
-source .venv/bin/activate
-uvicorn src.main:app --app-dir backend --host 0.0.0.0 --port 8000 --workers 1
-```
-
-> `config.yaml` 設定 `device: "auto"` 即可自動偵測 MPS；若需明確指定請設為 `device: "mps"`。
-
----
-
-#### 本地開發
-
-> 以下啟用 hot-reload，**僅供開發使用**，不建議用於正式服務。
-
-**後端（支援程式碼異動自動重啟）：**
-
-```bash
-# 方式一：從專案根目錄以 PYTHONPATH 執行（推薦）
-PYTHONPATH=. .venv/bin/uvicorn backend.src.main:app --host 0.0.0.0 --port 8000 --reload
-
-# 方式二：進入虛擬環境後以 --app-dir 執行
-source .venv/bin/activate
-uvicorn src.main:app --app-dir backend --host 0.0.0.0 --port 8000 --reload
-```
-
-> **Ollama 後端開發提示**：將 `config.yaml` 的 `model.backend` 設為 `"ollama"` 後啟動，可跳過本地模型載入（省去數分鐘等待），適合只需驗證 API / 前端行為的開發情境。
-
-**前端（dotnet watch，支援 Hot Reload）：**
-
-```bash
-dotnet run --project frontend/frontend.csproj
-```
-
-**前端重新編譯（手動）：**
-
-```bash
-# 本機重新編譯（Debug）
-dotnet build frontend/frontend.csproj -c Debug
-
-# 本機重新編譯（Release）
-dotnet build frontend/frontend.csproj -c Release
-```
-
-若使用容器部署前端，請重新建置 frontend image：
+**重新建置前端 image（程式碼變更後）：**
 
 ```bash
 # 一般重建
@@ -274,19 +295,139 @@ podman-compose build --no-cache frontend
 podman-compose up -d frontend
 ```
 
-Windows PowerShell 亦可一行啟動後端：
+**Windows + Podman Desktop + WSL portproxy 設定（若區域網路無法連線）：**
+
+Podman Desktop 透過 WSL2 執行，`wslrelay` 可能只監聽 `127.0.0.1`，需在 Windows 建立 portproxy：
 
 ```powershell
-$env:PYTHONPATH="."; .venv\Scripts\uvicorn.exe backend.src.main:app --host 0.0.0.0 --port 8000 --reload
+# 確保 IP Helper 服務已啟用
+Set-Service iphlpsvc -StartupType Automatic
+Start-Service iphlpsvc
+
+# 將區域網路 IP 轉發到 localhost
+netsh interface portproxy add v4tov4 listenaddress=10.1.1.99 listenport=5000 connectaddress=127.0.0.1 connectport=5000
+netsh interface portproxy add v4tov4 listenaddress=10.1.1.99 listenport=8000 connectaddress=127.0.0.1 connectport=8000
 ```
 
-### 5. 前端外觀設定
+檢查與刪除：
 
-前端可透過 `frontend/wwwroot/appsettings.json` 自訂顯示設定：
+```powershell
+netsh interface portproxy show all
+netsh interface portproxy delete v4tov4 listenaddress=10.1.1.99 listenport=5000
+netsh interface portproxy delete v4tov4 listenaddress=10.1.1.99 listenport=8000
+```
+
+---
+
+#### 方式 B：IIS 部署（Windows，前端靜態檔案）
+
+前端為純靜態 Blazor WASM，可直接由 IIS 服務，後端仍需在本機執行。
+
+**前置需求：**
+- IIS 已安裝，且已安裝 [URL Rewrite Module](https://www.iis.net/downloads/microsoft/url-rewrite)（SPA 路由必要）
+- .NET 9 SDK（用於 publish）
+
+**步驟一：Publish 前端**
+
+```powershell
+dotnet publish frontend/frontend.csproj -c Release -o frontend/publish
+```
+
+輸出在 `frontend/publish/wwwroot/`，`dotnet publish` 會自動產生 `web.config`（含 URL Rewrite 規則）。
+
+**步驟二：設定 BackendUrl**
+
+publish 後 `appsettings.json` 內仍為 `${BACKEND_URL}` 佔位符，需手動替換：
+
+```powershell
+(Get-Content frontend\publish\wwwroot\appsettings.json) `
+  -replace '\$\{BACKEND_URL\}', 'http://10.1.1.99:8000' |
+  Set-Content frontend\publish\wwwroot\appsettings.json
+```
+
+> 若前後端在同一台機器，後端由 `localhost` 存取，本步驟可跳過（`Program.cs` 有 fallback 邏輯）。
+
+**步驟三：IIS 網站設定**
+
+1. IIS 管理員 → 新增網站（或使用現有網站）
+2. 實體路徑：`D:\Project\GoogleTranslategemma\frontend\publish\wwwroot`
+3. 繫結：設定對應的 IP / Port（例如 `10.1.1.99:5000`）
+4. 確認 `web.config` 存在（`dotnet publish` 自動產生）
+
+**步驟四：啟動後端**
+
+```powershell
+$env:PYTHONPATH="."; .venv\Scripts\uvicorn.exe backend.src.main:app --host 0.0.0.0 --port 8000 --workers 1
+```
+
+> 後端建議以 Windows 服務或工作排程器設定開機自動啟動。
+
+**Windows 防火牆（允許區域網路存取）：**
+
+```powershell
+# 以系統管理員身分執行
+netsh advfirewall firewall add rule name="TranslateGemma Frontend" dir=in action=allow protocol=TCP localport=5000 profile=private,domain
+netsh advfirewall firewall add rule name="TranslateGemma Backend" dir=in action=allow protocol=TCP localport=8000 profile=private,domain
+```
+
+---
+
+#### 方式 C：macOS Apple Silicon 正式部署（MPS 加速）
+
+後端需本機執行才能存取 Metal/MPS；前端靜態檔案透過容器以 nginx 服務。
+
+**步驟一：啟動前端容器**
+
+```bash
+BACKEND_URL=http://10.1.1.99:8000 podman run -d --name translategemma-frontend \
+  -e BACKEND_URL=http://10.1.1.99:8000 \
+  -p 5000:80 \
+  $(podman build -q ./frontend)
+```
+
+或先 build 再 run：
+
+```bash
+podman build -t translategemma-frontend ./frontend
+podman run -d --name translategemma-frontend \
+  -e BACKEND_URL=http://10.1.1.99:8000 \
+  -p 5000:80 \
+  translategemma-frontend
+```
+
+**步驟二：本機啟動後端**
+
+```bash
+source .venv/bin/activate
+uvicorn src.main:app --app-dir backend --host 0.0.0.0 --port 8000 --workers 1
+```
+
+> `config.yaml` 設定 `device: "auto"` 即可自動偵測 MPS；若需明確指定請設為 `device: "mps"`。
+
+---
+
+### 6. 前端外觀設定
+
+前端設定依環境分為兩個檔案：
+
+| 檔案 | 用途 |
+|------|------|
+| `frontend/wwwroot/appsettings.json` | 正式部署用，`BackendUrl` 為 `${BACKEND_URL}` 佔位符 |
+| `frontend/wwwroot/appsettings.Development.json` | 本機開發用，`dotnet run` 時自動套用，固定指向 `http://localhost:8000` |
+
+`${BACKEND_URL}` 的替換來源：
+
+| 部署方式 | 替換方式 |
+|---------|---------|
+| 容器（Docker / Podman） | 容器啟動時 entrypoint 腳本以 `envsubst` 替換，來源為環境變數 `BACKEND_URL` |
+| IIS 靜態部署 | `dotnet publish` 後手動執行 PowerShell 替換（見方式 B 步驟二） |
+| 未替換（佔位符殘留） | `Program.cs` fallback 至 `http://localhost:8000`，並動態將 `localhost` 換成瀏覽器連線的主機 IP |
+
+`appsettings.json` 完整欄位說明：
 
 ```json
 {
-  "BackendUrl": "http://localhost:8000",
+  "BackendUrl": "${BACKEND_URL}",
   "AppTitle": "TranslateGemma",
   "AppLogoUrl": "",
   "ContentWidthPercent": 80
@@ -298,7 +439,7 @@ $env:PYTHONPATH="."; .venv\Scripts\uvicorn.exe backend.src.main:app --host 0.0.0
 | `BackendUrl` | 後端 API 位址 | `http://localhost:8000` |
 | `AppTitle` | 頁面標題及左上角顯示名稱 | `TranslateGemma` |
 | `AppLogoUrl` | 左上角 Logo 圖片路徑（相對於 `wwwroot`，例如 `/images/logo.png`）；**空白則不顯示圖示** | `""` |
-| `ContentWidthPercent` | 對話氣泡與輸入框的內容區塊寬度（佔瀏覽器視窗百分比，有效範圍 40–90 100） | `80` |
+| `ContentWidthPercent` | 對話氣泡與輸入框的內容區塊寬度（佔瀏覽器視窗百分比，有效範圍 40–100） | `80` |
 
 **Logo 使用範例：**
 
@@ -314,56 +455,17 @@ $env:PYTHONPATH="."; .venv\Scripts\uvicorn.exe backend.src.main:app --host 0.0.0
 
 > **佈景主題**：預設使用暗色模式，可在頁面右上角點擊圖示切換亮色 / 暗色，偏好設定會儲存在瀏覽器 `localStorage`。
 
-### 6. 訪問服務
+---
 
-- **前端介面**：http://localhost:5000
-- **後端 API 文件**：http://localhost:8000/docs
+### 8. 訪問服務（快速參考）
 
-#### Windows 防火牆設定（從區域網路存取）
+| 服務 | 預設位址 |
+|------|---------|
+| 前端介面（容器） | http://localhost:5000 |
+| 前端介面（IIS） | 依 IIS 繫結設定 |
+| 後端 API 文件 | http://localhost:8000/docs |
 
-容器啟動後會綁定 `0.0.0.0`，允許區域網路連線，但 **Windows 防火牆**預設會封鎖外部連線。若需從其他裝置透過區域網路 IP（例如 `10.1.1.99`）存取前端，請以**系統管理員身分**執行以下 PowerShell 指令：
 
-```powershell
-# 開放前端 port（容器部署，port 5000）
-netsh advfirewall firewall add rule name="TranslateGemma Frontend 5000" dir=in action=allow protocol=TCP localport=5000 profile=private,domain
-
-# 若需直接從外部呼叫後端 API（port 8000）
-netsh advfirewall firewall add rule name="TranslateGemma Backend 8000" dir=in action=allow protocol=TCP localport=8000 profile=private,domain
-```
-
-> 規則套用至私人與網域設定檔（`private,domain`），不影響公用網路（`public`）。
-
-#### Windows + Podman Desktop + WSL 額外設定
-
-若使用 Windows 上的 Podman Desktop（WSL backend），即使容器顯示 `0.0.0.0:5000->80/tcp`，Windows 端實際上仍可能只由 `wslrelay` 監聽 `127.0.0.1:5000`，導致從區域網路 IP（例如 `10.1.1.99:5000`）仍然無法連線。這種情況除了防火牆外，還需要在 Windows 主機建立 `portproxy`：
-
-```powershell
-# 確保 IP Helper 服務已啟用
-Set-Service iphlpsvc -StartupType Automatic
-Start-Service iphlpsvc
-
-# 將區域網路 IP:5000 轉發到本機 localhost:5000
-netsh interface portproxy add v4tov4 listenaddress=10.1.1.99 listenport=5000 connectaddress=127.0.0.1 connectport=5000
-
-# 若需讓其他裝置直接呼叫後端 API，再加開 8000
-netsh interface portproxy add v4tov4 listenaddress=10.1.1.99 listenport=8000 connectaddress=127.0.0.1 connectport=8000
-```
-
-檢查目前設定：
-
-```powershell
-netsh interface portproxy show all
-Test-NetConnection 10.1.1.99 -Port 5000
-```
-
-刪除規則：
-
-```powershell
-netsh interface portproxy delete v4tov4 listenaddress=10.1.1.99 listenport=5000
-netsh interface portproxy delete v4tov4 listenaddress=10.1.1.99 listenport=8000
-```
-
-> 若前端將提供給其他裝置使用，`frontend/wwwroot/appsettings.json` 的 `BackendUrl` 不能維持 `http://localhost:8000`，否則使用者的瀏覽器會連到「自己電腦」的 localhost，而不是這台服務主機。
 
 ## 📖 文件
 

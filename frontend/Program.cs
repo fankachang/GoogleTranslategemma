@@ -15,7 +15,25 @@ var appConfig = builder.Configuration.Get<AppConfig>() ?? new AppConfig();
 if (string.IsNullOrWhiteSpace(appConfig.AppTitle)) appConfig.AppTitle = "TranslateGemma";
 builder.Services.AddSingleton(appConfig);
 
+// BackendUrl 可在 appsettings.json 中設定，或透過容器環境變數 BACKEND_URL 注入。
+// 若值仍為佔位符（非容器環境的 dotnet run），則回退至 localhost:8000。
 var backendUrl = builder.Configuration["BackendUrl"] ?? "http://localhost:8000";
+if (string.IsNullOrWhiteSpace(backendUrl) || backendUrl.StartsWith("${"))
+    backendUrl = "http://localhost:8000";
+
+// 若 BackendUrl 指向 localhost/127.0.0.1，動態替換為瀏覽器實際存取的主機，
+// 以支援區域網路內其他電腦直接開啟頁面。
+{
+    var hostUri = new Uri(builder.HostEnvironment.BaseAddress);
+    if (!hostUri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+        && !hostUri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+    {
+        backendUrl = backendUrl
+            .Replace("localhost", hostUri.Host, StringComparison.OrdinalIgnoreCase)
+            .Replace("127.0.0.1", hostUri.Host, StringComparison.OrdinalIgnoreCase);
+    }
+}
+
 builder.Services.AddScoped(sp => new HttpClient
 {
     BaseAddress = new Uri(backendUrl),
