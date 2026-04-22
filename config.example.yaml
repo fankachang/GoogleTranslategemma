@@ -12,7 +12,7 @@ model:
 
   # ── Ollama 後端設定（backend: "ollama" 時生效）──────────────────────────
   # Ollama 服務的完整 URL（支援遠端伺服器，例如 http://192.168.1.10:11434）
-  ollama_base_url: "http://localhost:11434"
+  ollama_base_url: "http://10.1.1.99:11434"
   
   # Ollama 中已拉取的模型名稱（需先執行 ollama pull <model>）
   ollama_model: "translategemma:12b"
