@@ -3,6 +3,10 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS builder
 
 WORKDIR /src
 
+# 複製 NuGet 套件快取（若已預先下載，可離線 build；目錄為空時 dotnet 自動上網）
+COPY nuget-cache/ /nuget-packages/
+ENV NUGET_PACKAGES=/nuget-packages
+
 # 複製 csproj 並還原依賴（利用 layer cache）
 COPY frontend.csproj ./
 RUN dotnet restore

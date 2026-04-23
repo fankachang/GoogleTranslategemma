@@ -47,6 +47,10 @@ build/
 backend/pip-cache/*
 !backend/pip-cache/.gitkeep
 
+# NuGet 套件快取（用於離線 build，不納入版控）
+frontend/nuget-cache/*
+!frontend/nuget-cache/.gitkeep
+
 # Temporary
 tmp/
 temp/# ========================================
