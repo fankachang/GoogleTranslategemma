@@ -13,7 +13,7 @@ RUN dotnet restore --source /nuget-packages
 
 # 複製完整原始碼並發行
 COPY . ./
-RUN dotnet publish -c Release -o /publish
+RUN dotnet publish -c Release -o /publish --no-restore
 
 # ── 第二階段：靜態檔案服務（nginx） ───────────────────────────────────────────
 FROM nginx:alpine
