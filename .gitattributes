@@ -1,0 +1,2 @@
+# NuGet 套件快取：視為 binary，不做 CRLF 轉換
+frontend/nuget-cache/**  binary
