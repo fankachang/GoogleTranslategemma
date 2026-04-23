@@ -7,8 +7,8 @@ WORKDIR /src
 COPY nuget-cache/ /nuget-packages/
 ENV NUGET_PACKAGES=/nuget-packages
 
-# 複製 csproj 並還原依賴（利用 layer cache）
-COPY frontend.csproj ./
+# 複製 csproj 與 global.json 並還原依賴（利用 layer cache）
+COPY frontend.csproj global.json ./
 RUN dotnet restore --source /nuget-packages
 
 # 複製完整原始碼並發行
