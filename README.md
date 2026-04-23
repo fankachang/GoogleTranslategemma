@@ -290,6 +290,11 @@ podman-compose up -d
 .\build-backend.ps1             # CUDA 12.4（預設，適用 RTX 系列）
 .\build-backend.ps1 -CPU        # CPU-only torch
 
+# 方式一-2（一鍵正式部署）：前端 build + 服務啟動 + 健康檢查
+.\deploy-production.ps1
+.\deploy-production.ps1 -CPU
+.\deploy-production.ps1 -BackendUrl "http://10.1.1.99:8000"
+
 # 方式二：直接呼叫 podman-compose（pip-cache 空時需網路）
 podman-compose -f docker-compose.yaml -f docker-compose.gpu.yaml up -d
 ```

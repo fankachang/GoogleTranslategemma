@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -62,7 +63,12 @@ namespace TranslateGemma.Services
 
             try
             {
-                resp = await _http.PostAsJsonAsync("/api/translate", new
+                // SSE 串流需在收到 response headers 後立即回傳，
+                // 若使用預設行為可能等待完整內容導致前端一直顯示「翻譯中」。
+                using var initCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                initCts.CancelAfter(TimeSpan.FromSeconds(30));
+
+                var payload = new
                 {
                     text = req.Text,
                     source_lang = req.SourceLang,
@@ -76,7 +82,22 @@ namespace TranslateGemma.Services
                         target_lang = string.IsNullOrEmpty(e.TargetLang) ? null : e.TargetLang,
                         case_sensitive = e.CaseSensitive,
                     }).ToList(),
-                }, ct);
+                };
+
+                var request = new HttpRequestMessage(HttpMethod.Post, "/api/translate")
+                {
+                    Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"),
+                };
+
+                resp = await _http.SendAsync(
+                    request,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    initCts.Token
+                );
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                initError = "連線逾時（30 秒內未取得回應），請確認後端服務與 BACKEND_URL 設定。";
             }
             catch (Exception ex)
             {
