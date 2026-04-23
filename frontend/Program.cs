@@ -21,16 +21,24 @@ var backendUrl = builder.Configuration["BackendUrl"] ?? "http://localhost:8000";
 if (string.IsNullOrWhiteSpace(backendUrl) || backendUrl.StartsWith("${"))
     backendUrl = "http://localhost:8000";
 
-// 若 BackendUrl 指向 localhost/127.0.0.1，動態替換為瀏覽器實際存取的主機，
-// 以支援區域網路內其他電腦直接開啟頁面。
+// 前端與後端通常部署在同一台主機；若 BackendUrl 的 host 與瀏覽器實際存取的前端 host 不符，
+// 自動將 BackendUrl 的 host 換成前端 host，以支援「將整套服務複製到另一台機器」的場景。
+// 範例：BackendUrl 設為 10.1.1.99:8000，但實際在 10.34.26.255 上開啟 → 自動改成 10.34.26.255:8000。
 {
-    var hostUri = new Uri(builder.HostEnvironment.BaseAddress);
-    if (!hostUri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
-        && !hostUri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+    var frontendHost = new Uri(builder.HostEnvironment.BaseAddress).Host;
+    if (!frontendHost.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+        && !frontendHost.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase))
     {
-        backendUrl = backendUrl
-            .Replace("localhost", hostUri.Host, StringComparison.OrdinalIgnoreCase)
-            .Replace("127.0.0.1", hostUri.Host, StringComparison.OrdinalIgnoreCase);
+        try
+        {
+            var backendUri = new Uri(backendUrl);
+            if (!backendUri.Host.Equals(frontendHost, StringComparison.OrdinalIgnoreCase))
+            {
+                var ub = new UriBuilder(backendUrl) { Host = frontendHost };
+                backendUrl = ub.Uri.ToString().TrimEnd('/');
+            }
+        }
+        catch { }
     }
 }
 
