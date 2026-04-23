@@ -46,7 +46,10 @@ if ($null -eq $nupkgs -or $nupkgs.Count -eq 0) {
 
 # 3. 建置前端 Container Image
 Write-Host "建置前端 Container Image..." -ForegroundColor Cyan
-podman build -t frontend:latest $frontendDir
+# Use Cache
+# podman build -t frontend:latest $frontendDir
+# Not Use Cache
+podman build --no-cache -t frontend:latest $frontendDir
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Container build 失敗" -ForegroundColor Red
