@@ -41,6 +41,7 @@ tokenizer.json
 # Build / dist
 dist/
 build/
+!frontend/nuget-cache/**/build/
 *.egg-info/
 
 # pip wheel 快取（用於離線 build，不納入版控）
@@ -88,7 +89,6 @@ env/
 # Distribution / packaging
 *.egg-info/
 dist/
-build/
 *.egg
 
 # PyInstaller
