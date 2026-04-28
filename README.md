@@ -11,11 +11,11 @@
 - 🎯 **簡單設計**：無帳號管理、無持久化，關閉即清除
 - 🖥️ **多裝置支援**：NVIDIA CUDA、Apple MPS、CPU
 
-## � 操作介面截圖
+## 🖼️ 操作介面截圖
 
-![前端界面示意圖](./Docs/Images/frontend_interface.png)
+![前端介面示意圖](./Docs/Images/frontend_interface.png)
 
-## �🚀 快速開始
+## 🚀 快速開始
 
 ### 前置需求
 
@@ -222,13 +222,19 @@ dotnet run --project frontend/frontend.csproj
 
 ---
 
-#### 方式 A：容器部署（Podman / Docker）
+#### 部署前步驟
 
-> Podman / Docker 在 macOS 透過 Linux VM 執行容器，**Metal / MPS 無法穿透**，macOS 請改用下方「方式 C」。
+**步驟一：決定後端 URL（`BACKEND_URL`）**
 
-**步驟一：設定後端 URL 環境變數**
+先決定對外提供的後端位址（例如 `http://10.1.1.99:8000`）。此值會用在：
 
-容器啟動時會自動將 `appsettings.json` 內的 `${BACKEND_URL}` 替換為此變數。若省略，前端會動態將 `localhost` 替換為瀏覽器所連的主機 IP。
+- 5A：容器啟動時注入環境變數
+- 5B：publish 後替換 `appsettings.json` 佔位符
+- 5C：啟動前端容器時傳入環境變數
+
+`BACKEND_URL` 的替換機制與未替換時的 fallback 行為，請見下方「6. 前端外觀設定」。
+
+**步驟二：在目前環境設定 `BACKEND_URL`（建議）**
 
 **Linux / macOS：**
 
@@ -263,6 +269,25 @@ $env:BACKEND_URL = "http://10.1.1.99:8000"
 ```powershell
 echo $env:BACKEND_URL
 ```
+
+**步驟三：啟動後基本驗證**
+
+```bash
+# 後端健康檢查（至少確認能回應）
+curl -s http://localhost:8000/api/config
+```
+
+前端則依部署方式以瀏覽器開啟對應網址（預設可參考「7. 訪問服務」）。
+
+---
+
+#### 方式 A：容器部署（Podman / Docker）
+
+> Podman / Docker 在 macOS 透過 Linux VM 執行容器，**Metal / MPS 無法穿透**，macOS 請改用下方「方式 C」。
+
+**步驟一：沿用共用 `BACKEND_URL` 設定**
+
+先完成上方「部署前步驟」的步驟一與步驟二。
 
 **步驟二：啟動服務**
 
@@ -339,9 +364,7 @@ podman image prune -f
 podman builder prune -f
 ```
 
-> **為何需要 `build-backend.ps1`**：在 Windows 執行 `pip download` 只會下載 Windows wheel（`win_amd64`），Linux 容器無法使用。`build-backend.ps1` 會先在 `python:3.11-slim` Linux 容器內下載 wheel（透過 volume mount 寫回 `backend/pip-cache/`），確保取得正確平台的套件（含 `uvloop` 等 Linux-only 套件）。
-
-> **GPU 直通說明**：GPU 設定已獨立至 `docker-compose.gpu.yaml`，預設不帶入，避免非 NVIDIA 環境因找不到 CDI 裝置而報錯。
+> **`build-backend.ps1` 執行內容**：在 Windows 環境會於 `python:3.11-slim` Linux 容器內執行套件下載，並透過 volume mount 寫回 `backend/pip-cache/`，取得可供 Linux 容器使用的 wheel（含 `uvloop` 等 Linux-only 套件）。
 
 Docker Compose 同理：
 
@@ -402,13 +425,16 @@ dotnet publish frontend/frontend.csproj -c Release -o frontend/publish
 
 輸出在 `frontend/publish/wwwroot/`，`dotnet publish` 會自動產生 `web.config`（含 URL Rewrite 規則）。
 
-**步驟二：設定 BackendUrl**
+**步驟二：套用共用 URL 到 `appsettings.json`**
 
 publish 後 `appsettings.json` 內仍為 `${BACKEND_URL}` 佔位符，需手動替換：
 
 ```powershell
+# 與上方步驟一的 BACKEND_URL 保持一致
+$backendUrl = "http://10.1.1.99:8000"
+
 (Get-Content frontend\publish\wwwroot\appsettings.json) `
-  -replace '\$\{BACKEND_URL\}', 'http://10.1.1.99:8000' |
+  -replace '\$\{BACKEND_URL\}', $backendUrl |
   Set-Content frontend\publish\wwwroot\appsettings.json
 ```
 
@@ -446,8 +472,10 @@ netsh advfirewall firewall add rule name="TranslateGemma Backend" dir=in action=
 **步驟一：啟動前端容器**
 
 ```bash
-BACKEND_URL=http://10.1.1.99:8000 podman run -d --name translategemma-frontend \
-  -e BACKEND_URL=http://10.1.1.99:8000 \
+# 先設定 BACKEND_URL（沿用上方步驟二）
+BACKEND_URL=http://10.1.1.99:8000
+podman run -d --name translategemma-frontend \
+  -e BACKEND_URL=$BACKEND_URL \
   -p 5000:80 \
   $(podman build -q ./frontend)
 ```
@@ -455,9 +483,11 @@ BACKEND_URL=http://10.1.1.99:8000 podman run -d --name translategemma-frontend \
 或先 build 再 run：
 
 ```bash
+# 若在新終端執行，請先設定 BACKEND_URL
+# BACKEND_URL=http://10.1.1.99:8000
 podman build -t translategemma-frontend ./frontend
 podman run -d --name translategemma-frontend \
-  -e BACKEND_URL=http://10.1.1.99:8000 \
+  -e BACKEND_URL=$BACKEND_URL \
   -p 5000:80 \
   translategemma-frontend
 ```
@@ -524,7 +554,7 @@ uvicorn src.main:app --app-dir backend --host 0.0.0.0 --port 8000 --workers 1
 
 ---
 
-### 8. 訪問服務（快速參考）
+### 7. 訪問服務（快速參考）
 
 | 服務 | 預設位址 |
 |------|---------|

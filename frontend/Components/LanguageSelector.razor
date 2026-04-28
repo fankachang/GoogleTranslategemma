@@ -4,10 +4,14 @@
            Value="@Value"
            ValueChanged="@OnValueChanged"
            Label="@Label"
+           Placeholder="@Placeholder"
+           Style="@SelectStyle"
            Variant="Variant.Outlined"
            Dense="true"
+           Margin="Margin.Dense"
            Disabled="@Disabled"
-           AnchorOrigin="Origin.BottomLeft">
+           AnchorOrigin="Origin.BottomLeft"
+           TransformOrigin="Origin.TopLeft">
     @if (ShowAuto)
     {
         <MudSelectItem T="string" Value="@((string?)null)">自動偵測</MudSelectItem>
@@ -22,6 +26,8 @@
     [Parameter] public string? Value { get; set; }
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
     [Parameter] public string Label { get; set; } = "語言";
+    [Parameter] public string Placeholder { get; set; } = "自動偵測";
+    [Parameter] public string SelectStyle { get; set; } = "";
     [Parameter] public bool ShowAuto { get; set; } = false;
     [Parameter] public List<Language> Languages { get; set; } = new();
     [Parameter] public bool Disabled { get; set; } = false;
