@@ -5,6 +5,10 @@
 * When drafting the constitution, the context MUST be translated into `constitution_zhTW.md` and placed in the same directory (file names are case-sensitive).
 * Git logs and code annotations MUST be written in Traditional Chinese (zh-TW).
 
+# Interaction Guidelines
+
+* When clarification or input is needed from the user, you **MUST** use the `vscode_askQuestions` tool and provide selectable options. Do NOT ask questions in plain text.
+
 # Development Guidelines
 
 * When the frontend calls a backend API or function, ensure the API/function actually exists on the backend. Do not arbitrarily name or assume APIs/functions.
