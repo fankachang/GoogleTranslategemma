@@ -90,3 +90,9 @@ glossary:
       source_lang: "zh-TW"
       target_lang: "en"
       case_sensitive: false
+
+# 功能開關設定
+features:
+  # 語系選擇器功能（來源語系 ↔ 目的語系選擇列）
+  # 設為 true 後重啟服務，翻譯輸入框上方將顯示語系選擇器列
+  language_selector: false

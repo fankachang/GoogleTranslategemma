@@ -6,6 +6,7 @@
            Label="@Label"
            Variant="Variant.Outlined"
            Dense="true"
+           Disabled="@Disabled"
            AnchorOrigin="Origin.BottomLeft">
     @if (ShowAuto)
     {
@@ -23,6 +24,7 @@
     [Parameter] public string Label { get; set; } = "語言";
     [Parameter] public bool ShowAuto { get; set; } = false;
     [Parameter] public List<Language> Languages { get; set; } = new();
+    [Parameter] public bool Disabled { get; set; } = false;
 
     private Task OnValueChanged(string? val) => ValueChanged.InvokeAsync(val);
 }

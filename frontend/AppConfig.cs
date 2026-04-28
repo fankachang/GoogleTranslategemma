@@ -18,4 +18,9 @@ public class AppConfig
     /// 從後端 /api/config 動態取得；失敗時回退至預設值 512。
     /// </summary>
     public int MaxInputLength { get; set; } = 512;
+    /// <summary>
+    /// 語系選擇器功能是否啟用。
+    /// 從後端 /api/config 的 features.language_selector 動態取得；失敗時預設 false。
+    /// </summary>
+    public bool LanguageSelectorEnabled { get; set; } = false;
 }

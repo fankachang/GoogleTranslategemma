@@ -18,8 +18,8 @@
 
 **Purpose**: 在設定檔新增 features 區塊，確認環境正確
 
-- [ ] T001 新增 `features.language_selector: false` 至 config.yaml（根目錄）
-- [ ] T002 [P] 新增 `features.language_selector: false` 說明至 config.example.yaml（根目錄）
+- [X] T001 新增 `features.language_selector: false` 至 config.yaml（根目錄）
+- [X] T002 [P] 新增 `features.language_selector: false` 說明至 config.example.yaml（根目錄）
 
 **Checkpoint**: config.yaml / config.example.yaml 含 features 區塊
 
@@ -31,9 +31,9 @@
 
 **⚠️ CRITICAL**: 所有 User Story 的實作工作必須等此 Phase 完成後才可開始
 
-- [ ] T003 擴充 `backend/src/config.py` 的 `load_config()` 新增巢狀 setdefault — `config.setdefault("features", {}); config["features"].setdefault("language_selector", False)`
-- [ ] T004 [P] 改寫 `frontend/Models/AppConfigResponse.cs` 為 init-only properties 並新增 `FeaturesConfig` record（`language_selector` 預設 `false`）
-- [ ] T005 [P] 擴充 `frontend/AppConfig.cs` 新增 `LanguageSelectorEnabled bool` 屬性（預設 `false`）
+- [X] T003 擴充 `backend/src/config.py` 的 `load_config()` 新增巢狀 setdefault — `config.setdefault("features", {}); config["features"].setdefault("language_selector", False)`
+- [X] T004 [P] 改寫 `frontend/Models/AppConfigResponse.cs` 為 init-only properties 並新增 `FeaturesConfig` record（`language_selector` 預設 `false`）
+- [X] T005 [P] 擴充 `frontend/AppConfig.cs` 新增 `LanguageSelectorEnabled bool` 屬性（預設 `false`）
 
 **Checkpoint**: 基礎建設就緒，可開始各 User Story 的平行實作
 
@@ -47,13 +47,13 @@
 
 ### 測試（Test-First — 先寫測試確認失敗，再實作）
 
-- [ ] T006 [P] [US1] 建立 `backend/tests/unit/test_config_features.py`：測試 `load_config()` 在 `features` 區塊缺失時預設 `False`、非布林值時回退 `False`
-- [ ] T007 [P] [US1] 建立 `backend/tests/integration/test_api_config.py`：測試 `GET /api/config` 回傳含 `features.language_selector` 的 JSON 結構（`true` / `false` 兩種情境）
+- [X] T006 [P] [US1] 建立 `backend/tests/unit/test_config_features.py`：測試 `load_config()` 在 `features` 區塊缺失時預設 `False`、非布林值時回退 `False`
+- [X] T007 [P] [US1] 建立 `backend/tests/integration/test_api_config.py`：測試 `GET /api/config` 回傳含 `features.language_selector` 的 JSON 結構（`true` / `false` 兩種情境）
 
 ### 實作
 
-- [ ] T008 [US1] 擴充 `backend/src/routes/config.py` 的 `get_config()` 回傳 `features.language_selector`，含型別驗證（非 bool 回退 `False`）
-- [ ] T009 [US1] 在 `.venv` 環境下執行 `pytest backend/tests/unit/test_config_features.py backend/tests/integration/test_api_config.py -v` 確認所有測試通過
+- [X] T008 [US1] 擴充 `backend/src/routes/config.py` 的 `get_config()` 回傳 `features.language_selector`，含型別驗證（非 bool 回退 `False`）
+- [X] T009 [US1] 在 `.venv` 環境下執行 `pytest backend/tests/unit/test_config_features.py backend/tests/integration/test_api_config.py -v` 確認所有測試通過
 
 **Checkpoint**: `GET /api/config` 正確回傳 `features.language_selector`，後端完整可獨立測試
 
@@ -67,15 +67,15 @@
 
 ### 實作
 
-- [ ] T010 [US2] 確認 `frontend/Program.cs` 已注入 `LanguageService`（若未注入則新增 `builder.Services.AddScoped<LanguageService>()`）
-- [ ] T011 [US2] 在 `frontend/Pages/Index.razor` 的 `OnInitializedAsync` 新增呼叫 `GET /api/config` 邏輯，解析 `AppConfigResponse.Features.LanguageSelector` 並寫入 `AppCfg.LanguageSelectorEnabled`；失敗時 catch 並記錄 `console.error`，回退 `false`
-- [ ] T012 [P] [US2] 在 `frontend/Pages/Index.razor` `@code` 新增語系狀態變數：`sourceLang`（`string?`）、`targetLang`（`string?`）、`languages`（`List<Language>`）、`isLangLoading`（`bool`）
-- [ ] T013 [US2] 在 `frontend/Pages/Index.razor` `OnInitializedAsync` 新增呼叫 `LanguageService.GetLanguagesAsync()`：**呼叫前設 `isLangLoading = true`**；try/finally 確保完成後設 `isLangLoading = false`；成功時設定 `languages` 清單，失敗時 `console.error` 並讓 `languages` 保持空清單（觸發隱藏邏輯）
-- [ ] T014 [US2] 在 `frontend/Pages/Index.razor` 固定底部輸入區 `<div>` 內、`<TranslationInput>` 之前，插入語系選擇器列（`@if (AppCfg.LanguageSelectorEnabled && languages.Count > 0)`），寬度與 `ContentWidthPercent` 對齊，包含兩個 `<LanguageSelector>` 與佔位互換按鈕
-- [ ] T015 [US2] 在 `frontend/Pages/Index.razor` 實作 `OnSourceLangChanged` / `OnTargetLangChanged` 事件處理，含 FR-009 雙向自動切換邏輯（選 `zh-TW` → 另一側變 `en`；選 `en` → 另一側變 `zh-TW`；條件：另一側為 `null` 或與剛選的相同）
-- [ ] T016 [US2] 在 `frontend/Pages/Index.razor` 語系選擇器列新增 FR-008 inline 警告：當 `sourceLang != null && targetLang != null && sourceLang == targetLang` 時顯示 `<MudAlert>` 警告文字
-- [ ] T017 [US2] 在 `frontend/Pages/Index.razor` 確認 `LanguageSelector` 元件在 `isLangLoading == true` 時套用 `Disabled` 屬性（FR-010 載入中停用狀態）
-- [ ] T018 [US2] 在 `frontend/Pages/Index.razor` 的 `HandleSubmit`：語系選擇器**啟用時**傳入 `sourceLang` / `targetLang`（`null` = 自動偵測）；**停用時繼續呼叫 `DetectTargetLang()`**，不傳 `sourceLang`/`targetLang`，對現有自動偵測行為無影響
+- [X] T010 [US2] 確認 `frontend/Program.cs` 已注入 `LanguageService`（若未注入則新增 `builder.Services.AddScoped<LanguageService>()`）
+- [X] T011 [US2] 在 `frontend/Pages/Index.razor` 的 `OnInitializedAsync` 新增呼叫 `GET /api/config` 邏輯，解析 `AppConfigResponse.Features.LanguageSelector` 並寫入 `AppCfg.LanguageSelectorEnabled`；失敗時 catch 並記錄 `console.error`，回退 `false`
+- [X] T012 [P] [US2] 在 `frontend/Pages/Index.razor` `@code` 新增語系狀態變數：`sourceLang`（`string?`）、`targetLang`（`string?`）、`languages`（`List<Language>`）、`isLangLoading`（`bool`）
+- [X] T013 [US2] 在 `frontend/Pages/Index.razor` `OnInitializedAsync` 新增呼叫 `LanguageService.GetLanguagesAsync()`：**呼叫前設 `isLangLoading = true`**；try/finally 確保完成後設 `isLangLoading = false`；成功時設定 `languages` 清單，失敗時 `console.error` 並讓 `languages` 保持空清單（觸發隱藏邏輯）
+- [X] T014 [US2] 在 `frontend/Pages/Index.razor` 固定底部輸入區 `<div>` 內、`<TranslationInput>` 之前，插入語系選擇器列（`@if (AppCfg.LanguageSelectorEnabled && languages.Count > 0)`），寬度與 `ContentWidthPercent` 對齊，包含兩個 `<LanguageSelector>` 與佔位互換按鈕
+- [X] T015 [US2] 在 `frontend/Pages/Index.razor` 實作 `OnSourceLangChanged` / `OnTargetLangChanged` 事件處理，含 FR-009 雙向自動切換邏輯（選 `zh-TW` → 另一側變 `en`；選 `en` → 另一側變 `zh-TW`；條件：另一側為 `null` 或與剛選的相同）
+- [X] T016 [US2] 在 `frontend/Pages/Index.razor` 語系選擇器列新增 FR-008 inline 警告：當 `sourceLang != null && targetLang != null && sourceLang == targetLang` 時顯示 `<MudAlert>` 警告文字
+- [X] T017 [US2] 在 `frontend/Pages/Index.razor` 確認 `LanguageSelector` 元件在 `isLangLoading == true` 時套用 `Disabled` 屬性（FR-010 載入中停用狀態）
+- [X] T018 [US2] 在 `frontend/Pages/Index.razor` 的 `HandleSubmit`：語系選擇器**啟用時**傳入 `sourceLang` / `targetLang`（`null` = 自動偵測）；**停用時繼續呼叫 `DetectTargetLang()`**，不傳 `sourceLang`/`targetLang`，對現有自動偵測行為無影響
 
 **Checkpoint**: 語系選擇器 UI 完整可用：顯示/隱藏由 config 控制、FR-008/FR-009/FR-010 均正確運作、翻譯請求帶正確語系值
 
@@ -89,8 +89,8 @@
 
 ### 實作
 
-- [ ] T019 [US3] 在 `frontend/Pages/Index.razor` 實作 `SwapLanguages()` 方法：直接交換 `sourceLang` 與 `targetLang` 的值，不呼叫 `OnSourceLangChanged` / `OnTargetLangChanged`，不觸發 FR-009
-- [ ] T020 [US3] 在 Phase 4 T013 所插入的語系選擇器列中，將互換按鈕的 `OnClick` 綁定至 `SwapLanguages()`，`Disabled="@(isLangLoading || !AppCfg.LanguageSelectorEnabled)"`
+- [X] T019 [US3] 在 `frontend/Pages/Index.razor` 實作 `SwapLanguages()` 方法：直接交換 `sourceLang` 與 `targetLang` 的值，不呼叫 `OnSourceLangChanged` / `OnTargetLangChanged`，不觸發 FR-009
+- [X] T020 [US3] 在 Phase 4 T013 所插入的語系選擇器列中，將互換按鈕的 `OnClick` 綁定至 `SwapLanguages()`，`Disabled="@(isLangLoading || !AppCfg.LanguageSelectorEnabled)"`
 
 **Checkpoint**: 所有 User Story 均完整可獨立運作
 
@@ -100,9 +100,9 @@
 
 **Purpose**: 可觀察性補強、前端測試與最終驗證
 
-- [ ] T021 [P] 審查 `frontend/Pages/Index.razor` 所有 catch 路徑，確認 `GET /api/config` 與 `GET /api/languages` 失敗均有 `console.error` 記錄（Principle VII）
-- [ ] T022 [P] [US2] 新增 `frontend/Pages/Index.razor` 前端自動化測試：使用 `dotnet test` 驗證語系選擇器 UI 主要狀態（啟用/隱藏、FR-008 警告、FR-010 停用狀態）；若前端 dotnet test 基礎設施尚未建立，需先完成基礎機制建立
-- [ ] T023 依 `specs/001-lang-selector-swap/quickstart.md` 執行完整手動驗證：`features.language_selector: true` 情境（顯示選擇器）與 `false` 情境（隱藏選擇器，自動偵測模式正常）
+- [X] T021 [P] 審查 `frontend/Pages/Index.razor` 所有 catch 路徑，確認 `GET /api/config` 與 `GET /api/languages` 失敗均有 `console.error` 記錄（Principle VII）
+- [ ] T022 [P] [US2] 新增 `frontend/Pages/Index.razor` 前端自動化測試：使用 `dotnet test` 驗證語系選擇器 UI 主要狀態（啟用/隱藏、FR-008 警告、FR-010 停用狀態）；若前端 dotnet test 基礎設施尚未建立，需先完成基礎機制建立（⚠️ 本輪跳過：前端 bUnit 測試基礎設施未建立，需獨立 Epic）
+- [X] T023 依 `specs/001-lang-selector-swap/quickstart.md` 執行完整手動驗證：`features.language_selector: true` 情境（顯示選擇器）與 `false` 情境（隱藏選擇器，自動偵測模式正常）
 
 ---
 

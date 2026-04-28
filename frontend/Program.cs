@@ -55,13 +55,15 @@ builder.Services.AddMudServices();
 builder.Services.AddScoped<ITranslationService, TranslationService>();
 builder.Services.AddScoped<LanguageService>();
 
-// 從後端取得公開設定（如字數上限），失敗時靜默保留預設值
+// 從後端取得公開設定（如字數上限、功能開關），失敗時靜默保留預設值
 try
 {
     using var initHttp = new HttpClient { BaseAddress = new Uri(backendUrl) };
     var backendConfig = await initHttp.GetFromJsonAsync<AppConfigResponse>("/api/config");
     if (backendConfig != null && backendConfig.MaxInputLength > 0)
         appConfig.MaxInputLength = backendConfig.MaxInputLength;
+    if (backendConfig != null)
+        appConfig.LanguageSelectorEnabled = backendConfig.Features.LanguageSelector;
 }
 catch (Exception ex)
 {

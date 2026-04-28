@@ -36,5 +36,8 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
     cfg.setdefault("glossary", {})
     cfg["glossary"].setdefault("enabled", False)
     cfg["glossary"].setdefault("entries", [])
+    # 功能開關預設值
+    cfg.setdefault("features", {})
+    cfg["features"].setdefault("language_selector", False)
 
     return cfg

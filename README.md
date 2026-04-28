@@ -299,6 +299,46 @@ podman-compose up -d
 podman-compose -f docker-compose.yaml -f docker-compose.gpu.yaml up -d
 ```
 
+**程式碼變更後（特別是 backend/src）如何正確重編譯與重啟：**
+
+僅執行 `podman-compose up -d` 不會保證既有容器被替換，可能仍沿用舊容器，導致 API 回應看起來像沒更新。
+
+建議使用以下流程：
+
+```powershell
+# 1) 先重建後端 image（一般情況）
+podman-compose -f docker-compose.yaml -f docker-compose.gpu.yaml build backend
+
+# 2) 強制重建並替換執行中的後端容器
+podman-compose -f docker-compose.yaml -f docker-compose.gpu.yaml up -d --force-recreate backend
+
+# 3) 驗證新設定是否生效
+curl -s http://localhost:8000/api/config
+```
+
+若你要一次重建並啟動所有服務，可用：
+
+```powershell
+podman-compose -f docker-compose.yaml -f docker-compose.gpu.yaml up -d --build --force-recreate
+```
+
+若懷疑 image build cache 影響（較少見），再使用：
+
+```powershell
+# 強制不使用快取重建後端 image
+podman-compose -f docker-compose.yaml -f docker-compose.gpu.yaml build --no-cache backend
+
+# 重新建立後端容器
+podman-compose -f docker-compose.yaml -f docker-compose.gpu.yaml up -d --force-recreate backend
+```
+
+若仍異常，可清理未使用的建置快取與懸空 image（不會刪除正在使用的容器）：
+
+```powershell
+podman image prune -f
+podman builder prune -f
+```
+
 > **為何需要 `build-backend.ps1`**：在 Windows 執行 `pip download` 只會下載 Windows wheel（`win_amd64`），Linux 容器無法使用。`build-backend.ps1` 會先在 `python:3.11-slim` Linux 容器內下載 wheel（透過 volume mount 寫回 `backend/pip-cache/`），確保取得正確平台的套件（含 `uvloop` 等 Linux-only 套件）。
 
 > **GPU 直通說明**：GPU 設定已獨立至 `docker-compose.gpu.yaml`，預設不帶入，避免非 NVIDIA 環境因找不到 CDI 裝置而報錯。

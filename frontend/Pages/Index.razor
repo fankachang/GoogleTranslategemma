@@ -3,6 +3,7 @@
 @inject IJSRuntime JS
 @inject AppConfig AppCfg
 @inject IDialogService DialogService
+@inject LanguageService LanguageService
 
 <div class="tg-layout" style="display:flex; flex-direction:column; height:100vh; overflow:hidden;">
 
@@ -63,6 +64,39 @@
     @* ── 輸入框（固定底部） ── *@
     <div style="flex-shrink:0; display:flex; justify-content:center; padding:12px 16px 20px;">
         <div style="width:@(AppCfg.ContentWidthPercent)%;">
+
+            @* 語系選擇器列（啟用且語系清單已載入時展示） *@
+            @if (AppCfg.LanguageSelectorEnabled && _languages.Count > 0)
+            {
+                <div style="margin-bottom:8px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <LanguageSelector ShowAuto="true"
+                                          Languages="_languages"
+                                          Value="@_sourceLang"
+                                          ValueChanged="OnSourceLangChanged"
+                                          Disabled="@_isLangLoading"
+                                          Label="原語系" />
+                        <MudIconButton Icon="@Icons.Material.Filled.SwapHoriz"
+                                       title="互換語系"
+                                       OnClick="SwapLanguages"
+                                       Disabled="@(_isLangLoading || !AppCfg.LanguageSelectorEnabled)" />
+                        <LanguageSelector ShowAuto="true"
+                                          Languages="_languages"
+                                          Value="@_targetLang"
+                                          ValueChanged="OnTargetLangChanged"
+                                          Disabled="@_isLangLoading"
+                                          Label="目的語系" />
+                    </div>
+                    @* FR-008: 相同語系警告 *@
+                    @if (_sourceLang != null && _targetLang != null && _sourceLang == _targetLang)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Style="margin-top:4px;">
+                            原語系與目的語系相同，翻譯結果可能不準確。
+                        </MudAlert>
+                    }
+                </div>
+            }
+
             <TranslationInput IsSubmitting="@_isSubmitting"
                               OnSubmit="HandleSubmit"
                               OnCancel="HandleCancel"
@@ -91,12 +125,78 @@
     private string _toastMessage = string.Empty;
     private Severity _toastSeverity = Severity.Info;
 
+    // T012: 語系選擇器狀態變數
+    private string? _sourceLang;
+    private string? _targetLang;
+    private List<Language> _languages = new();
+    private bool _isLangLoading;
+
+    // T013: 載入語系清單
+    protected override async Task OnInitializedAsync()
+    {
+        _isLangLoading = true;
+        try
+        {
+            _languages = await LanguageService.GetLanguagesAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[LanguageService] GET /api/languages 失敗：{ex.Message}");
+            _languages = new List<Language>();
+        }
+        finally
+        {
+            _isLangLoading = false;
+        }
+    }
+
+    // T015: FR-009 雙向自動切換邏輯（僅在使用者主動操作下拉選單時觸發）
+    private void OnSourceLangChanged(string? val)
+    {
+        _sourceLang = val;
+        if (val != null && (_targetLang == null || _targetLang == val))
+        {
+            _targetLang = val == "zh-TW" ? "en" : (val == "en" ? "zh-TW" : null);
+        }
+    }
+
+    private void OnTargetLangChanged(string? val)
+    {
+        _targetLang = val;
+        if (val != null && (_sourceLang == null || _sourceLang == val))
+        {
+            _sourceLang = val == "zh-TW" ? "en" : (val == "en" ? "zh-TW" : null);
+        }
+    }
+
+    // T019: 互換語系（不觸發 FR-009）
+    private void SwapLanguages()
+    {
+        (_sourceLang, _targetLang) = (_targetLang, _sourceLang);
+    }
+
     private static string DetectTargetLang(string text) =>
         text.Any(c => c >= 0x4E00 && c <= 0x9FFF) ? "en" : "zh-TW";
 
+    // T018: HandleSubmit 依語系選擇器啟用狀態決定是否傳入 sourceLang/targetLang
     private async Task HandleSubmit(string text)
     {
-        var targetLang = DetectTargetLang(text);
+        string? sourceLang;
+        string targetLang;
+
+        if (AppCfg.LanguageSelectorEnabled)
+        {
+            // 語系選擇器啟用：使用使用者選擇值（null = 自動偵測）
+            sourceLang = _sourceLang;
+            targetLang = _targetLang ?? DetectTargetLang(text);
+        }
+        else
+        {
+            // 語系選擇器停用：維持現有自動偵測行為
+            sourceLang = null;
+            targetLang = DetectTargetLang(text);
+        }
+
         var entry = new TranslationHistory
         {
             OriginalText = text,
@@ -114,7 +214,7 @@
         var req = new TranslationRequest
         {
             Text = text,
-            SourceLang = null,
+            SourceLang = sourceLang,
             TargetLang = targetLang,
             Stream = true,
             Glossary = _customGlossary.Count > 0 ? _customGlossary.ToList() : null,

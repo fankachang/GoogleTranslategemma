@@ -15,4 +15,14 @@ def get_config(req: Request):
     # 無效值（0 或負數）回退預設值
     if not isinstance(max_input_length, int) or max_input_length <= 0:
         max_input_length = 512
-    return {"max_input_length": max_input_length}
+    # features 區塊
+    features_cfg = app_config.get("features", {})
+    language_selector = features_cfg.get("language_selector", False)
+    if not isinstance(language_selector, bool):
+        language_selector = False
+    return {
+        "max_input_length": max_input_length,
+        "features": {
+            "language_selector": language_selector,
+        },
+    }
