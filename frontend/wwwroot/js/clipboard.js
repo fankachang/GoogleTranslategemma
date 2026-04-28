@@ -29,3 +29,20 @@ window.scrollToBottom = function (elementId) {
         el.scrollTop = el.scrollHeight;
     }
 };
+
+const TG_SESSION_KEY = 'tg_session_id';
+
+window.getTrackedSessionId = function () {
+    return window.sessionStorage.getItem(TG_SESSION_KEY);
+};
+
+window.setTrackedSessionId = function (sessionId) {
+    if (!sessionId) {
+        return;
+    }
+    window.sessionStorage.setItem(TG_SESSION_KEY, sessionId);
+};
+
+window.clearTrackedSessionId = function () {
+    window.sessionStorage.removeItem(TG_SESSION_KEY);
+};

@@ -4,19 +4,27 @@
 @inject AppConfig AppCfg
 @inject IDialogService DialogService
 @inject LanguageService LanguageService
+@inject HttpClient Http
+@implements IAsyncDisposable
 
 <div class="tg-layout" style="display:flex; flex-direction:column; height:100vh; overflow:hidden;">
 
     @* ── 標題列 ── *@
     <div class="d-flex align-center justify-space-between px-4 pt-3 pb-2" style="flex-shrink:0;">
-        <MudText Typo="Typo.h6" Style="font-weight:600;">
-            @if (!string.IsNullOrWhiteSpace(AppCfg.AppLogoUrl))
-            {
-                <img src="@AppCfg.AppLogoUrl" alt="logo"
-                     style="height:24px; vertical-align:middle; margin-right:6px;" />
-            }
-            @AppCfg.AppTitle
-        </MudText>
+        <div class="d-flex align-center gap-2">
+            <MudText Typo="Typo.h6" Style="font-weight:600;">
+                @if (!string.IsNullOrWhiteSpace(AppCfg.AppLogoUrl))
+                {
+                    <img src="@AppCfg.AppLogoUrl" alt="logo"
+                         style="height:24px; vertical-align:middle; margin-right:6px;" />
+                }
+                @AppCfg.AppTitle
+            </MudText>
+            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">
+                <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" Style="margin-right:4px;" />
+                @_onlineCount 線上
+            </MudChip>
+        </div>
         <div class="d-flex align-center gap-1">
             <MudBadge Content="@_customGlossary.Count" Color="Color.Primary"
                       Overlap="true" Visible="@(_customGlossary.Count > 0)">
@@ -148,8 +156,14 @@
 
     // 預設顯示為「自動偵測」
     private const string? DefaultAutoDetect = null;
+    
+    // 會話管理
+    private string? _sessionId;
+    private int _onlineCount = 0;
+    private System.Threading.CancellationTokenSource? _heartbeatCts;
+    private bool _sessionConnected = false;
 
-    // T013: 載入語系清單
+    // T013: 載入語系清單 + 會話連接
     protected override async Task OnInitializedAsync()
     {
         _isLangLoading = true;
@@ -168,6 +182,9 @@
         {
             _isLangLoading = false;
         }
+        
+        // 連接會話
+        await ConnectSession();
     }
 
     // T015: FR-009 雙向自動切換邏輯（僅在使用者主動操作下拉選單時觸發）
@@ -309,6 +326,141 @@
     {
         try { await JS.InvokeVoidAsync("scrollToBottom", "chat-area"); }
         catch { }
+    }
+
+    // ── 會話管理方法 ──
+    
+    private async Task ConnectSession()
+    {
+        try
+        {
+            var trackedSessionId = await JS.InvokeAsync<string?>("getTrackedSessionId");
+            var connectUrl = string.IsNullOrWhiteSpace(trackedSessionId)
+                ? "/api/sessions/connect"
+                : $"/api/sessions/connect?session_id={Uri.EscapeDataString(trackedSessionId)}";
+
+            var response = await Http.PostAsync(connectUrl, null);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<SessionConnectResponse>();
+                _sessionId = result?.SessionId;
+                _onlineCount = result?.OnlineCount ?? _onlineCount;
+                _sessionConnected = true;
+                if (!string.IsNullOrWhiteSpace(_sessionId))
+                {
+                    await JS.InvokeVoidAsync("setTrackedSessionId", _sessionId);
+                }
+                Console.WriteLine($"[Session] 已連接，SessionID: {_sessionId}");
+                
+                // 啟動定期心跳與線上人數更新
+                _heartbeatCts = new System.Threading.CancellationTokenSource();
+                _ = UpdateOnlineCountLoop(_heartbeatCts.Token);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Session] 連接失敗：{ex.Message}");
+        }
+    }
+
+    private async Task DisconnectSession()
+    {
+        if (!_sessionConnected || string.IsNullOrEmpty(_sessionId))
+            return;
+
+        try
+        {
+            // 停止心跳迴圈
+            _heartbeatCts?.Cancel();
+            
+            // 發送斷開請求
+            var url = $"/api/sessions/disconnect?session_id={Uri.EscapeDataString(_sessionId)}";
+            var response = await Http.PostAsync(url, null);
+            if (response.IsSuccessStatusCode)
+            {
+                _sessionConnected = false;
+                await JS.InvokeVoidAsync("clearTrackedSessionId");
+                Console.WriteLine("[Session] 已斷開連接");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Session] 斷開失敗：{ex.Message}");
+        }
+    }
+
+    private async Task UpdateOnlineCountLoop(System.Threading.CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                // 先更新線上人數
+                await UpdateOnlineCount();
+                
+                // 再發送心跳（保持會話活躍）
+                if (!string.IsNullOrEmpty(_sessionId))
+                {
+                    var url = $"/api/sessions/heartbeat?session_id={Uri.EscapeDataString(_sessionId)}";
+                    var response = await Http.PostAsync(url, null, cancellationToken);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Console.Error.WriteLine("[Session] 心跳失敗，嘗試重連");
+                        _sessionConnected = false;
+                        await ConnectSession();
+                    }
+                }
+                
+                // 等待 30 秒再更新
+                await Task.Delay(30000, cancellationToken);
+            }
+            catch (System.OperationCanceledException)
+            {
+                // 正常取消，退出迴圈
+                break;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[Session] 心跳迴圈出錯：{ex.Message}");
+            }
+        }
+    }
+
+    private async Task UpdateOnlineCount()
+    {
+        try
+        {
+            var response = await Http.GetAsync("/api/stats/online_users");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<OnlineCountResponse>();
+                _onlineCount = result?.OnlineCount ?? 0;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Stats] 取得線上人數失敗：{ex.Message}");
+        }
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        await DisconnectSession();
+        _heartbeatCts?.Dispose();
+    }
+
+    // 會話回應模型
+    public class SessionConnectResponse
+    {
+        public string SessionId { get; set; } = string.Empty;
+        public int OnlineCount { get; set; }
+        public string Status { get; set; } = string.Empty;
+    }
+
+    public class OnlineCountResponse
+    {
+        public int OnlineCount { get; set; }
     }
 }
 

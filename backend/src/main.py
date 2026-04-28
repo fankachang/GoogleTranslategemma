@@ -9,12 +9,15 @@ from fastapi.staticfiles import StaticFiles
 from swagger_ui_bundle import swagger_ui_path
 from .config import load_config
 from .backends import create_backend, OllamaBackend, LocalBackend
+from .session_manager import SessionManager
 
 from .routes.health import router as health_router
 from .routes.translate import router as translate_router
 from .routes.languages import router as languages_router
 from .routes.glossary import router as glossary_router
 from .routes.config import router as config_router
+from .routes.sessions import router as sessions_router
+from .routes.stats import router as stats_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -30,6 +33,11 @@ async def lifespan(app: FastAPI):
     app.state.device = model_cfg.get("device") if isinstance(backend, LocalBackend) else None
     app.state.glossary = config.get("glossary", {"enabled": False, "entries": []})
     app.state.config = config
+    
+    # 初始化會話管理器
+    session_manager = SessionManager(session_timeout_seconds=900)
+    app.state.session_manager = session_manager
+    await session_manager.start_cleanup_task(check_interval_seconds=60)
 
     if isinstance(backend, LocalBackend):
         app.state.model_loading = True
@@ -38,7 +46,7 @@ async def lifespan(app: FastAPI):
             loop = asyncio.get_event_loop()
             try:
                 await loop.run_in_executor(None, backend.load)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
             finally:
                 app.state.model_loading = False
@@ -51,7 +59,8 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # Lifespan 結束：釋放 OllamaBackend 的 httpx.Client
+    # Lifespan 結束：釋放會話管理器與後端資源
+    await session_manager.stop_cleanup_task()
     if isinstance(backend, OllamaBackend):
         await backend.aclose()
 
@@ -101,4 +110,6 @@ app.include_router(translate_router, prefix="/api")
 app.include_router(languages_router, prefix="/api")
 app.include_router(glossary_router, prefix="/api")
 app.include_router(config_router, prefix="/api")
+app.include_router(sessions_router, prefix="/api")
+app.include_router(stats_router, prefix="/api")
 
